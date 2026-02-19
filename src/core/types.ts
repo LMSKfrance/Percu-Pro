@@ -25,6 +25,8 @@ export interface UiState {
   activeTrackId: TrackId;
   expandedTrackId: TrackId | null;
   activeEngine: EngineId;
+  /** City profile for groove generator (e.g. Detroit, Berlin, Tbilisi) */
+  cityProfile: string;
 }
 
 export interface GrooveCandidate {

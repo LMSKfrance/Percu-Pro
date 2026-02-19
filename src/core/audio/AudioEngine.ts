@@ -48,7 +48,7 @@ function ensureGraph(): boolean {
   if (masterGain) return true;
 
   masterGain = ctx.createGain();
-  masterGain.gain.value = 0.7;
+  masterGain.gain.value = 0.88;
 
   saturator = ctx.createWaveShaper();
   const curve = new Float32Array(256);

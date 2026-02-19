@@ -1,0 +1,182 @@
+import React, { useReducer, useCallback, useContext, useMemo } from "react";
+import type { AppState, TrackId, EngineId } from "./types";
+import type { PatchOp, PatternState } from "./patternTypes";
+import { createInitialPatternState, applyPatternPatch } from "./patternTypes";
+import { buildFullRandomizeOps } from "./groove/fullRandomize";
+
+const ENGINE_BY_TRACK: Record<TrackId, EngineId> = {
+  kick: "Percussion Engine",
+  snare: "Percussion Engine",
+  hhc: "Percussion Engine",
+  hho: "Percussion Engine",
+  perc1: "Poly-Chord Engine",
+  perc2: "Poly-Chord Engine",
+  rim: "Acid Bass Line",
+  clap: "Percussion Engine",
+};
+
+const initialBpm = 132;
+const initialSeed = 42;
+
+export const initialState: AppState = {
+  ui: { activeTrackId: "kick", expandedTrackId: "kick", activeEngine: "Percussion Engine", cityProfile: "Berlin" },
+  transport: { bpm: initialBpm, isPlaying: false, isLooping: true },
+  pattern: createInitialPatternState(initialBpm, initialSeed),
+};
+
+type Action =
+  | { type: "setActiveTrack"; payload: TrackId }
+  | { type: "toggleExpandedTrack"; payload: TrackId }
+  | { type: "setActiveEngine"; payload: EngineId }
+  | { type: "setActiveEngineFromActiveTrack" }
+  | { type: "setCityProfile"; payload: string }
+  | { type: "togglePlay" }
+  | { type: "stop" }
+  | { type: "toggleLoop" }
+  | { type: "setBpm"; payload: number }
+  | { type: "applyPatternPatch"; payload: PatchOp[] }
+  | { type: "setPattern"; payload: PatternState }
+  | { type: "setStepVelocity"; payload: { laneId: TrackId; stepIndex: number; velocity: number } }
+  | { type: "setStepOn"; payload: { laneId: TrackId; stepIndex: number; velocity?: number } }
+  | { type: "clearStep"; payload: { laneId: TrackId; stepIndex: number } }
+  | { type: "setStepAccent"; payload: { laneId: TrackId; stepIndex: number; accent: boolean } };
+
+export function reducer(state: AppState, action: Action): AppState {
+  switch (action.type) {
+    case "setActiveTrack": {
+      const trackId = action.payload;
+      return { ...state, ui: { ...state.ui, activeTrackId: trackId, activeEngine: ENGINE_BY_TRACK[trackId] } };
+    }
+    case "toggleExpandedTrack": {
+      const trackId = action.payload;
+      return { ...state, ui: { ...state.ui, expandedTrackId: state.ui.expandedTrackId === trackId ? null : trackId } };
+    }
+    case "setActiveEngine":
+      return { ...state, ui: { ...state.ui, activeEngine: action.payload } };
+    case "setActiveEngineFromActiveTrack":
+      return { ...state, ui: { ...state.ui, activeEngine: ENGINE_BY_TRACK[state.ui.activeTrackId] } };
+    case "setCityProfile":
+      return { ...state, ui: { ...state.ui, cityProfile: action.payload } };
+    case "togglePlay":
+      return { ...state, transport: { ...state.transport, isPlaying: !state.transport.isPlaying } };
+    case "stop":
+      return { ...state, transport: { ...state.transport, isPlaying: false } };
+    case "toggleLoop":
+      return { ...state, transport: { ...state.transport, isLooping: !state.transport.isLooping } };
+    case "setBpm":
+      return { ...state, transport: { ...state.transport, bpm: action.payload } };
+    case "applyPatternPatch": {
+      const pattern = state.pattern ?? createInitialPatternState(state.transport.bpm, initialSeed);
+      return { ...state, pattern: applyPatternPatch(pattern, action.payload) };
+    }
+    case "setPattern":
+      return { ...state, pattern: action.payload };
+    case "setStepVelocity": {
+      const pattern = state.pattern ?? createInitialPatternState(state.transport.bpm, initialSeed);
+      const ops: PatchOp[] = [{ op: "SET_VELOCITY", ...action.payload }];
+      return { ...state, pattern: applyPatternPatch(pattern, ops) };
+    }
+    case "setStepOn": {
+      const pattern = state.pattern ?? createInitialPatternState(state.transport.bpm, initialSeed);
+      const { laneId, stepIndex, velocity = 0.75 } = action.payload;
+      const ops: PatchOp[] = [{ op: "SET_STEP", laneId, stepIndex, on: true, velocity }];
+      return { ...state, pattern: applyPatternPatch(pattern, ops) };
+    }
+    case "clearStep": {
+      const pattern = state.pattern ?? createInitialPatternState(state.transport.bpm, initialSeed);
+      const ops: PatchOp[] = [{ op: "CLEAR_STEP", ...action.payload }];
+      return { ...state, pattern: applyPatternPatch(pattern, ops) };
+    }
+    case "setStepAccent": {
+      const pattern = state.pattern ?? createInitialPatternState(state.transport.bpm, initialSeed);
+      const { laneId, stepIndex, accent } = action.payload;
+      const lane = pattern.lanes[laneId];
+      if (!lane || stepIndex < 0 || stepIndex >= lane.steps.length) return state;
+      const step = lane.steps[stepIndex];
+      const ops: PatchOp[] = [{
+        op: "SET_STEP",
+        laneId,
+        stepIndex,
+        on: step.on,
+        velocity: step.velocity,
+        probability: step.probability,
+        microShiftMs: step.microShiftMs,
+        accent,
+      }];
+      return { ...state, pattern: applyPatternPatch(pattern, ops) };
+    }
+    default:
+      return state;
+  }
+}
+
+type StoreValue = {
+  state: AppState;
+  dispatch: React.Dispatch<Action>;
+  actions: {
+    setActiveTrack: (trackId: TrackId) => void;
+    toggleExpandedTrack: (trackId: TrackId) => void;
+    setActiveEngine: (engineId: EngineId) => void;
+    setActiveEngineFromActiveTrack: () => void;
+    setCityProfile: (cityProfile: string) => void;
+    togglePlay: () => void;
+    stop: () => void;
+    toggleLoop: () => void;
+    setBpm: (bpm: number) => void;
+    applyPatternPatch: (ops: PatchOp[]) => void;
+    setPattern: (pattern: PatternState) => void;
+    setStepVelocity: (laneId: TrackId, stepIndex: number, velocity: number) => void;
+    setStepOn: (laneId: TrackId, stepIndex: number, velocity?: number) => void;
+    clearStep: (laneId: TrackId, stepIndex: number) => void;
+    setStepAccent: (laneId: TrackId, stepIndex: number, accent: boolean) => void;
+    fullRandomizePattern: (currentState: AppState, options?: { unsafe?: boolean }) => void;
+  };
+};
+
+const StoreContext = React.createContext<StoreValue | null>(null);
+
+export function PercuProStoreProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  const actions: StoreValue["actions"] = {
+    setActiveTrack: useCallback((trackId: TrackId) => dispatch({ type: "setActiveTrack", payload: trackId }), []),
+    toggleExpandedTrack: useCallback((trackId: TrackId) => dispatch({ type: "toggleExpandedTrack", payload: trackId }), []),
+    setActiveEngine: useCallback((engineId: EngineId) => dispatch({ type: "setActiveEngine", payload: engineId }), []),
+    setActiveEngineFromActiveTrack: useCallback(() => dispatch({ type: "setActiveEngineFromActiveTrack" }), []),
+    setCityProfile: useCallback((cityProfile: string) => dispatch({ type: "setCityProfile", payload: cityProfile }), []),
+    togglePlay: useCallback(() => dispatch({ type: "togglePlay" }), []),
+    stop: useCallback(() => dispatch({ type: "stop" }), []),
+    toggleLoop: useCallback(() => dispatch({ type: "toggleLoop" }), []),
+    setBpm: useCallback((bpm: number) => dispatch({ type: "setBpm", payload: bpm }), []),
+    applyPatternPatch: useCallback((ops: PatchOp[]) => dispatch({ type: "applyPatternPatch", payload: ops }), []),
+    setPattern: useCallback((pattern: PatternState) => dispatch({ type: "setPattern", payload: pattern }), []),
+    setStepVelocity: useCallback((laneId: TrackId, stepIndex: number, velocity: number) => {
+      dispatch({ type: "setStepVelocity", payload: { laneId, stepIndex, velocity } });
+    }, []),
+    setStepOn: useCallback((laneId: TrackId, stepIndex: number, velocity = 0.75) => {
+      dispatch({ type: "setStepOn", payload: { laneId, stepIndex, velocity } });
+    }, []),
+    clearStep: useCallback((laneId: TrackId, stepIndex: number) => {
+      dispatch({ type: "clearStep", payload: { laneId, stepIndex } });
+    }, []),
+    setStepAccent: useCallback((laneId: TrackId, stepIndex: number, accent: boolean) => {
+      dispatch({ type: "setStepAccent", payload: { laneId, stepIndex, accent } });
+    }, []),
+    fullRandomizePattern: useCallback((currentState: AppState, options?: { unsafe?: boolean }) => {
+      const pattern = currentState.pattern ?? createInitialPatternState(currentState.transport.bpm, initialSeed);
+      const seed = pattern.seed ?? initialSeed;
+      const ops = buildFullRandomizeOps(pattern, seed, options);
+      dispatch({ type: "applyPatternPatch", payload: ops });
+    }, []),
+  };
+
+  const value = useMemo<StoreValue>(() => ({ state, dispatch, actions }), [state, actions]);
+
+  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+}
+
+export function usePercuProV1Store(): StoreValue {
+  const v = useContext(StoreContext);
+  if (!v) throw new Error("usePercuProV1Store must be used within PercuProStoreProvider");
+  return v;
+}

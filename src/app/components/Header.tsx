@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "motion/react";
 import { Cpu, Clock, Activity } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { usePercuProV1Store } from "../../core/store";
 
 const VARIANTS = ["Detroit", "Tbilisi", "Berlin"];
 
 export const Header: React.FC = () => {
-  const [selectedVariant, setSelectedVariant] = useState("Berlin");
+  const { state, actions } = usePercuProV1Store();
+  const selectedVariant = state.ui.cityProfile;
+  const setSelectedVariant = actions.setCityProfile;
 
   return (
     <header className="h-[80px] w-full px-12 flex items-center justify-between border-b border-[#121212]/05 bg-[#F2F2EB] sticky top-0 z-50">
