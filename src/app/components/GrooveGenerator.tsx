@@ -11,6 +11,10 @@ import {
   Gauge
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { usePercuProV1Store } from "../../core/store";
+import { createInitialPatternState } from "../../core/patternTypes";
+import { runGroovePipeline } from "../../core/groove/runGroovePipeline";
+import { toStorePatchOps } from "../../core/groove/toStorePatch";
 
 const GROOVE_PRESETS = [
   { id: "tight", name: "Studio Tight", color: "#00D2FF" },
@@ -21,6 +25,7 @@ const GROOVE_PRESETS = [
 ];
 
 export const GrooveGenerator: React.FC = () => {
+  const { state, actions } = usePercuProV1Store();
   const [activePreset, setActivePreset] = useState("swing");
   const [complexity, setComplexity] = useState(45);
   const [intensity, setIntensity] = useState(60);
@@ -28,6 +33,36 @@ export const GrooveGenerator: React.FC = () => {
 
   const handleGenerate = () => {
     setIsGenerating(true);
+    const pattern = state.pattern ?? createInitialPatternState(state.transport.bpm, 42);
+    const seed = Math.max(1, (pattern.seed + 1) % 0x7fffffff);
+    const result = runGroovePipeline({
+      seed,
+      tempoBpm: state.transport.bpm,
+      cityProfile: "Berlin",
+      influenceVector: ["AfroFunk", "AfroDisco"],
+      artistLenses: ["Huckaby", "Surgeon"],
+      mode: "FUTURIST_FUNK",
+      density: complexity / 100,
+      swingPct: 55,
+      pattern: state.pattern,
+    });
+    const huckaby = result.scoredCandidates.length > 1;
+    actions.setGrooveLastCritique(result.critiqueItems);
+    if (huckaby) {
+      const top3 = result.scoredCandidates.map((c) => ({
+        id: c.id,
+        label: c.label,
+        ops: toStorePatchOps(c.ops),
+      }));
+      actions.setGrooveTop3(top3);
+    } else {
+      const best = result.scoredCandidates[0];
+      if (best) {
+        actions.applyPatternPatch(toStorePatchOps(best.ops));
+        actions.setGrooveLastAppliedCount(best.ops.length);
+      }
+      actions.setGrooveTop3(null);
+    }
     setTimeout(() => setIsGenerating(false), 800);
   };
 
@@ -140,47 +175,73 @@ export const GrooveGenerator: React.FC = () => {
       </div>
 
       {/* Right Section: Generator Trigger */}
-      <div className="flex items-center gap-4 min-w-fit">
+      <div className="flex items-center gap-4 min-w-fit flex-wrap">
         <div className="h-10 w-[1px] bg-[#121212]/05 mx-2" />
-        <button 
-          onClick={handleGenerate}
-          className={cn(
-            "h-11 px-6 rounded-full flex items-center gap-3 transition-all duration-300 relative overflow-hidden group",
-            isGenerating ? "bg-[#181818] scale-95" : "bg-[#181818] hover:bg-[#2a2a2a] shadow-lg shadow-[#181818]/10"
-          )}
-        >
-          <AnimatePresence mode="wait">
-            {isGenerating ? (
-              <motion.div 
-                key="loading"
-                initial={{ rotate: 0 }}
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 0.5, ease: "linear" }}
-              >
-                <RefreshCcw size={16} className="text-[#E66000]" />
-              </motion.div>
-            ) : (
-              <motion.div key="icon" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                <Dices size={16} className="text-[#E66000]" />
-              </motion.div>
+        <div className="relative flex flex-col items-end">
+          <button 
+            onClick={handleGenerate}
+            className={cn(
+              "h-11 px-6 rounded-full flex items-center gap-3 transition-all duration-300 relative overflow-hidden group",
+              isGenerating ? "bg-[#181818] scale-95" : "bg-[#181818] hover:bg-[#2a2a2a] shadow-lg shadow-[#181818]/10"
             )}
-          </AnimatePresence>
-          <span className="text-[12px] font-[Inter] font-bold text-white uppercase tracking-widest">
-            Generate Groove
-          </span>
-          
-          {/* Shine Effect */}
-          <motion.div 
-            className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
-            animate={{ left: isGenerating ? "100%" : "-100%" }}
-            transition={{ duration: 0.8 }}
-          />
-        </button>
+          >
+            <AnimatePresence mode="wait">
+              {isGenerating ? (
+                <motion.div 
+                  key="loading"
+                  initial={{ rotate: 0 }}
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 0.5, ease: "linear" }}
+                >
+                  <RefreshCcw size={16} className="text-[#E66000]" />
+                </motion.div>
+              ) : (
+                <motion.div key="icon" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+                  <Dices size={16} className="text-[#E66000]" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <span className="text-[12px] font-[Inter] font-bold text-white uppercase tracking-widest">
+              Generate Groove
+            </span>
+            <motion.div 
+              className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
+              animate={{ left: isGenerating ? "100%" : "-100%" }}
+              transition={{ duration: 0.8 }}
+            />
+          </button>
+          {state.groove?.top3?.length ? (
+            <div className="absolute top-full left-0 mt-1 w-full min-w-[140px] bg-[#181818] rounded-[4px] border border-white/10 shadow-xl z-[100] p-1">
+              {state.groove.top3.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => actions.applyCandidate(c.id)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 rounded-[2px] text-[11px] font-[Inter] font-bold text-left transition-colors",
+                    "text-white/40 hover:bg-white/05 hover:text-white/80"
+                  )}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
 
         <button className="w-11 h-11 rounded-full bg-[#121212]/03 border border-[#121212]/05 flex items-center justify-center hover:bg-[#121212]/06 transition-all group">
           <Settings size={18} className="text-[#121212]/30 group-hover:text-[#121212]/60" />
         </button>
       </div>
+
+      {typeof import.meta !== "undefined" && import.meta.env?.DEV && (
+        <div className="absolute bottom-0 left-12 right-12 h-6 flex items-center gap-4 text-[9px] font-mono text-[#121212]/40 border-t border-[#121212]/05 px-2">
+          {state.groove?.top3?.length ? (
+            <span>Pick: {state.groove.top3.map((c) => c.label).join(", ")}</span>
+          ) : null}
+          <span>Applied ops: {state.groove?.lastAppliedCount ?? 0}</span>
+          <span>Critique: {state.groove?.lastCritique?.length ?? 0} items</span>
+        </div>
+      )}
     </div>
   );
 };

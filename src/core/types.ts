@@ -27,7 +27,24 @@ export interface UiState {
   activeEngine: EngineId;
 }
 
+export interface GrooveCandidate {
+  id: string;
+  label: string;
+  ops: import("./patternTypes").PatchOp[];
+}
+
+export interface GrooveState {
+  top3: GrooveCandidate[] | null;
+  lastCritique: { reason: string; message: string }[];
+  lastAppliedCount: number;
+}
+
+/** Pattern state is optional; when present, sequencer rows are controlled from store (patternPatch applies here). */
 export interface AppState {
   ui: UiState;
   transport: TransportState;
+  pattern?: import("./patternTypes").PatternState;
+  groove?: GrooveState;
 }
+
+export type { PatternState } from "./patternTypes";

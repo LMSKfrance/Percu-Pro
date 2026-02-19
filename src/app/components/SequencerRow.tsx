@@ -3,38 +3,61 @@ import { motion, AnimatePresence } from "motion/react";
 import { StepButton } from "./StepButton";
 import { ChevronRight, ChevronLeft, Power, Sliders, Dices } from "lucide-react";
 import { cn } from "../../lib/utils";
+import type { TrackId } from "../../core/types";
+
+const DEFAULT_STEPS = new Array(16).fill(false);
+const DEFAULT_VELS = new Array(16).fill(100);
 
 interface SequencerRowProps {
+  trackId?: TrackId;
   label: string;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   isActive?: boolean;
   onActivate?: () => void;
+  steps?: boolean[];
+  velocities?: number[];
+  onToggleStep?: (index: number) => void;
+  onVelocityChange?: (index: number, velocity: number) => void;
 }
 
 export const SequencerRow: React.FC<SequencerRowProps> = ({
+  trackId,
   label,
   isExpanded = false,
   onToggleExpand,
   isActive = false,
   onActivate,
+  steps: controlledSteps,
+  velocities: controlledVelocities,
+  onToggleStep,
+  onVelocityChange,
 }) => {
-  const [activeSteps, setActiveSteps] = useState<boolean[]>(new Array(16).fill(false));
-  const [velocities, setVelocities] = useState<number[]>(new Array(16).fill(100));
+  const [localSteps, setLocalSteps] = useState<boolean[]>(DEFAULT_STEPS);
+  const [localVelocities, setLocalVelocities] = useState<number[]>(DEFAULT_VELS);
   const [power, setPower] = useState(true);
 
+  const isControlled = controlledSteps != null && controlledVelocities != null;
+  const activeSteps = isControlled ? controlledSteps : localSteps;
+  const velocities = isControlled ? controlledVelocities : localVelocities;
+
   const toggleStep = (index: number) => {
-    const newSteps = [...activeSteps];
-    newSteps[index] = !newSteps[index];
-    setActiveSteps(newSteps);
-    // When a step is clicked, it counts as interacting with the track
+    if (isControlled && onToggleStep) onToggleStep(index);
+    else {
+      const next = [...localSteps];
+      next[index] = !next[index];
+      setLocalSteps(next);
+    }
     onActivate?.();
   };
 
   const handleVelocityChange = (index: number, val: number) => {
-    const newVels = [...velocities];
-    newVels[index] = val;
-    setVelocities(newVels);
+    if (isControlled && onVelocityChange) onVelocityChange(index, val);
+    else {
+      const next = [...localVelocities];
+      next[index] = val;
+      setLocalVelocities(next);
+    }
   };
 
   const handleRowClick = () => {

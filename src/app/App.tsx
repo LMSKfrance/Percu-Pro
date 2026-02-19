@@ -187,16 +187,24 @@ export default function App() {
           </div>
 
           <div className="flex flex-col">
-            {SEQUENCER_TRACKS.map((track) => (
-              <SequencerRow 
-                key={track.id} 
-                label={track.label} 
-                isActive={activeTrackId === track.id}
-                isExpanded={expandedTrackId === track.id}
-                onActivate={() => actions.setActiveTrack(track.id)}
-                onToggleExpand={() => actions.toggleExpandedTrack(track.id)}
-              />
-            ))}
+            {SEQUENCER_TRACKS.map((track) => {
+              const lane = state.pattern?.lanes[track.id];
+              return (
+                <SequencerRow
+                  key={track.id}
+                  trackId={track.id}
+                  label={track.label}
+                  isActive={activeTrackId === track.id}
+                  isExpanded={expandedTrackId === track.id}
+                  onActivate={() => actions.setActiveTrack(track.id)}
+                  onToggleExpand={() => actions.toggleExpandedTrack(track.id)}
+                  steps={lane?.steps.map((s) => s.on)}
+                  velocities={lane?.steps.map((s) => Math.round(s.velocity * 100))}
+                  onToggleStep={(i) => actions.setStep(track.id, i, !lane?.steps[i]?.on)}
+                  onVelocityChange={(i, v) => actions.setStepVelocity(track.id, i, v / 100)}
+                />
+              );
+            })}
           </div>
         </section>
 
