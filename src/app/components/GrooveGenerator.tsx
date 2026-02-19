@@ -8,7 +8,6 @@ import {
   Layers, 
   Zap,
   RefreshCcw,
-  Gauge
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { usePercuProV1Store } from "../../core/store";
@@ -16,17 +15,16 @@ import { createInitialPatternState } from "../../core/patternTypes";
 import { runGroovePipeline } from "../../core/groove/runGroovePipeline";
 import { toStorePatchOps } from "../../core/groove/toStorePatch";
 
-const GROOVE_PRESETS = [
-  { id: "tight", name: "Studio Tight", color: "#00D2FF" },
-  { id: "swing", name: "Classic Swing", color: "#E66000" },
-  { id: "lazy", name: "Lazy 16ths", color: "#E66000" },
-  { id: "chaos", name: "Generative Chaos", color: "#FF3B30" },
-  { id: "ghost", name: "Ghost Note Flow", color: "#00D2FF" }
+/** City styles drive the groove pipeline (cityProfile + influence/mode). */
+const CITY_STYLES = [
+  { id: "Detroit", name: "Detroit", color: "#E66000", influenceVector: ["Chicago", "Acid"], mode: "CLEAN_FUNCTIONAL" },
+  { id: "Berlin", name: "Berlin", color: "#00D2FF", influenceVector: ["Hardwax", "Kraut"], mode: "MOTORIK_DRIVE" },
+  { id: "Tbilisi", name: "Tbilisi", color: "#34C759", influenceVector: ["DeepAfrica", "Disco"], mode: "FUTURIST_FUNK" },
 ];
 
 export const GrooveGenerator: React.FC = () => {
   const { state, actions } = usePercuProV1Store();
-  const [activePreset, setActivePreset] = useState("swing");
+  const [activeCity, setActiveCity] = useState<string>("Berlin");
   const [complexity, setComplexity] = useState(45);
   const [intensity, setIntensity] = useState(60);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -35,35 +33,44 @@ export const GrooveGenerator: React.FC = () => {
     setIsGenerating(true);
     const pattern = state.pattern ?? createInitialPatternState(state.transport.bpm, 42);
     const seed = Math.max(1, (pattern.seed + 1) % 0x7fffffff);
-    const result = runGroovePipeline({
-      seed,
-      tempoBpm: state.transport.bpm,
-      cityProfile: "Berlin",
-      influenceVector: ["AfroFunk", "AfroDisco"],
-      artistLenses: ["Huckaby", "Surgeon"],
-      mode: "FUTURIST_FUNK",
-      density: complexity / 100,
-      swingPct: 55,
-      pattern: state.pattern,
-    });
-    const huckaby = result.scoredCandidates.length > 1;
-    actions.setGrooveLastCritique(result.critiqueItems);
-    if (huckaby) {
-      const top3 = result.scoredCandidates.map((c) => ({
-        id: c.id,
-        label: c.label,
-        ops: toStorePatchOps(c.ops),
-      }));
-      actions.setGrooveTop3(top3);
-    } else {
-      const best = result.scoredCandidates[0];
-      if (best) {
-        actions.applyPatternPatch(toStorePatchOps(best.ops));
-        actions.setGrooveLastAppliedCount(best.ops.length);
+    const cityStyle = CITY_STYLES.find((c) => c.id === activeCity) ?? CITY_STYLES[1];
+    try {
+      const result = runGroovePipeline({
+        seed,
+        tempoBpm: state.transport.bpm,
+        cityProfile: cityStyle.id,
+        influenceVector: cityStyle.influenceVector,
+        artistLenses: ["Huckaby", "Surgeon"],
+        mode: cityStyle.mode,
+        density: complexity / 100,
+        swingPct: 55 + (intensity / 100) * 10,
+        pattern: state.pattern ?? undefined,
+      });
+      actions.setGrooveLastCritique(result.critiqueItems ?? []);
+      const candidates = result.scoredCandidates ?? [];
+      if (candidates.length > 1) {
+        const top3 = candidates.slice(0, 3).map((c) => ({
+          id: c.id,
+          label: c.label,
+          ops: toStorePatchOps(c.ops),
+        }));
+        actions.setGrooveTop3(top3);
+      } else {
+        const best = candidates[0];
+        if (best) {
+          actions.applyPatternPatch(toStorePatchOps(best.ops));
+          actions.setGrooveLastAppliedCount(best.ops.length);
+        }
+        actions.setGrooveTop3(null);
+      }
+    } catch (err) {
+      if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+        console.warn("[GrooveGenerator] pipeline error", err);
       }
       actions.setGrooveTop3(null);
+    } finally {
+      setTimeout(() => setIsGenerating(false), 800);
     }
-    setTimeout(() => setIsGenerating(false), 800);
   };
 
   return (
@@ -76,7 +83,7 @@ export const GrooveGenerator: React.FC = () => {
         <div className="flex flex-col">
           <div className="flex items-center gap-2 text-[#121212]/20 mb-1">
             <Sparkles size={12} strokeWidth={2.5} />
-            <span className="text-[9px] uppercase font-bold tracking-widest font-mono">Algorithm Presets</span>
+            <span className="text-[9px] uppercase font-bold tracking-widest font-mono">City Style</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative group">
@@ -84,24 +91,24 @@ export const GrooveGenerator: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div 
                     className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(230,96,0,0.4)]" 
-                    style={{ backgroundColor: GROOVE_PRESETS.find(p => p.id === activePreset)?.color }} 
+                    style={{ backgroundColor: CITY_STYLES.find(p => p.id === activeCity)?.color }} 
                   />
                   <span className="text-[12px] font-[Inter] font-bold text-[#121212]/80">
-                    {GROOVE_PRESETS.find(p => p.id === activePreset)?.name}
+                    {CITY_STYLES.find(p => p.id === activeCity)?.name}
                   </span>
                 </div>
                 <ChevronDown size={14} className="text-[#121212]/20" />
               </button>
               
-              {/* Dropdown Menu (Hidden for demo, just visual) */}
               <div className="absolute top-full left-0 mt-1 w-full bg-[#181818] rounded-[4px] border border-white/10 shadow-xl opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all z-[100] p-1">
-                {GROOVE_PRESETS.map((p) => (
+                {CITY_STYLES.map((p) => (
                   <button
                     key={p.id}
-                    onClick={() => setActivePreset(p.id)}
+                    type="button"
+                    onClick={() => setActiveCity(p.id)}
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 rounded-[2px] text-[11px] font-[Inter] font-bold text-left transition-colors",
-                      activePreset === p.id ? "bg-[#E66000]/10 text-[#E66000]" : "text-white/40 hover:bg-white/05 hover:text-white/80"
+                      activeCity === p.id ? "bg-[#E66000]/10 text-[#E66000]" : "text-white/40 hover:bg-white/05 hover:text-white/80"
                     )}
                   >
                     <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }} />

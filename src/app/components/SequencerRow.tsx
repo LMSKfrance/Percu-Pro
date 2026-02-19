@@ -18,6 +18,7 @@ interface SequencerRowProps {
   steps?: boolean[];
   velocities?: number[];
   accents?: boolean[];
+  currentStepIndex?: number;
   onToggleStep?: (index: number) => void;
   onVelocityChange?: (index: number, velocity: number) => void;
   onStepAdd?: (index: number) => void;
@@ -35,6 +36,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
   steps: controlledSteps,
   velocities: controlledVelocities,
   accents: controlledAccents,
+  currentStepIndex,
   onToggleStep,
   onVelocityChange,
   onStepAdd,
@@ -131,9 +133,10 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
             <StepButton 
               key={i}
               index={i}
-              active={active && power}
+              active={(active ?? false) && power}
               accented={controlledAccents?.[i] ?? (i % 4 === 0)}
-              velocity={velocities[i]}
+              velocity={velocities[i] ?? 100}
+              isCurrentStep={currentStepIndex === i}
               onClick={!usePatchCallbacks ? () => toggleStep(i) : undefined}
               onVelocityChange={(val) => handleVelocityChange(i, val)}
               onAdd={usePatchCallbacks ? () => { onStepAdd?.(i); onActivate?.(); } : undefined}

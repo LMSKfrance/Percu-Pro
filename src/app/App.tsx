@@ -21,7 +21,12 @@ import {
 import { motion } from "motion/react";
 import { usePercuProV1Store } from "../core/store";
 import type { TrackId, EngineId, AppState } from "../core/types";
+import { STEPS_PER_BAR } from "../core/patternTypes";
 import * as audioEngine from "../core/audio/AudioEngine";
+
+const EMPTY_STEPS = Object.freeze(new Array(STEPS_PER_BAR).fill(false));
+const DEFAULT_VELS = Object.freeze(new Array(STEPS_PER_BAR).fill(100));
+const EMPTY_ACCENTS = Object.freeze(new Array(STEPS_PER_BAR).fill(false));
 
 const SEQUENCER_TRACKS: { id: TrackId; label: string; engine: EngineId }[] = [
   { id: "kick", label: "Kick Drum", engine: "Percussion Engine" },
@@ -133,6 +138,8 @@ export default function App() {
 
   const stateRef = useRef(state);
   stateRef.current = state;
+  const playStartTimeRef = useRef<number>(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(-1);
 
   const handleTogglePlay = useCallback(() => {
     audioEngine.userGestureInit();
@@ -141,11 +148,26 @@ export default function App() {
 
   useEffect(() => {
     if (state.transport.isPlaying) {
+      playStartTimeRef.current = performance.now();
       audioEngine.start((): AppState => stateRef.current);
     } else {
       audioEngine.stop();
+      setCurrentStepIndex(-1);
     }
   }, [state.transport.isPlaying]);
+
+  useEffect(() => {
+    if (!state.transport.isPlaying || state.transport.bpm <= 0) return;
+    const stepDurMs = (60 / state.transport.bpm) * 1000 / 4;
+    const tick = () => {
+      const elapsed = performance.now() - playStartTimeRef.current;
+      const step = Math.floor(elapsed / stepDurMs) % 16;
+      setCurrentStepIndex(step);
+    };
+    tick();
+    const id = setInterval(tick, Math.max(20, Math.floor(stepDurMs / 4)));
+    return () => clearInterval(id);
+  }, [state.transport.isPlaying, state.transport.bpm]);
 
   useEffect(() => {
     audioEngine.setBpm(state.transport.bpm);
@@ -194,7 +216,7 @@ export default function App() {
              <div className="flex items-center gap-4">
                <button
                  type="button"
-                 onClick={(e) => actions.fullRandomizePattern(state, e.shiftKey ? { unsafe: true } : undefined)}
+                 onClick={(e) => actions.fullRandomizePattern(stateRef.current, e.shiftKey ? { unsafe: true } : undefined)}
                  className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
                >
                  <Shuffle size={14} strokeWidth={2.5} className="text-[#121212]/50" />
@@ -222,6 +244,15 @@ export default function App() {
           <div className="flex flex-col">
             {SEQUENCER_TRACKS.map((track) => {
               const lane = state.pattern?.lanes[track.id];
+              const steps = lane?.steps?.length === STEPS_PER_BAR
+                ? lane.steps.map((s) => s.on)
+                : [...EMPTY_STEPS];
+              const velocities = lane?.steps?.length === STEPS_PER_BAR
+                ? lane.steps.map((s) => Math.round(s.velocity * 100))
+                : [...DEFAULT_VELS];
+              const accents = lane?.steps?.length === STEPS_PER_BAR
+                ? lane.steps.map((s) => s.accent)
+                : [...EMPTY_ACCENTS];
               return (
                 <SequencerRow
                   key={track.id}
@@ -231,14 +262,14 @@ export default function App() {
                   isExpanded={expandedTrackId === track.id}
                   onActivate={() => actions.setActiveTrack(track.id)}
                   onToggleExpand={() => actions.toggleExpandedTrack(track.id)}
-                  steps={lane?.steps.map((s) => s.on)}
-                  velocities={lane?.steps.map((s) => Math.round(s.velocity * 100))}
-                  accents={lane?.steps.map((s) => s.accent)}
-                  onToggleStep={(i) => actions.setStep(track.id, i, !lane?.steps[i]?.on)}
-                  onVelocityChange={(i, v) => actions.setStepVelocity(track.id, i, v / 100)}
+                  steps={steps}
+                  velocities={velocities}
+                  accents={accents}
+                  currentStepIndex={currentStepIndex}
+                  onVelocityChange={(i, v) => actions.setStepVelocity(track.id, i, Math.max(0.15, Math.min(1, v / 100)))}
                   onStepAdd={(i) => actions.setStepOn(track.id, i)}
                   onStepClear={(i) => actions.clearStep(track.id, i)}
-                  onStepAccentToggle={(i) => actions.setStepAccent(track.id, i, !lane?.steps[i]?.accent)}
+                  onStepAccentToggle={(i) => actions.setStepAccent(track.id, i, !accents[i])}
                 />
               );
             })}

@@ -4,9 +4,11 @@ import { cn, clamp } from "../../lib/utils";
 
 const SINGLE_CLICK_DELAY_MS = 220;
 
-interface StepButtonProps {
+export interface StepButtonProps {
   active?: boolean;
   accented?: boolean;
+  /** Playhead: step is currently playing (DAW-style). */
+  isCurrentStep?: boolean;
   onClick?: () => void;
   index: number;
   velocity: number;
@@ -22,6 +24,7 @@ interface StepButtonProps {
 export const StepButton: React.FC<StepButtonProps> = ({
   active = false,
   accented = false,
+  isCurrentStep = false,
   onClick,
   index,
   velocity,
@@ -34,22 +37,26 @@ export const StepButton: React.FC<StepButtonProps> = ({
   const [dragStartY, setDragStartY] = useState(0);
   const [initialVelocity, setInitialVelocity] = useState(velocity);
   const singleClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didDragRef = useRef(false);
 
   const handleClick = useCallback(() => {
+    if (isDragging) return;
     if (singleClickTimerRef.current) clearTimeout(singleClickTimerRef.current);
     singleClickTimerRef.current = setTimeout(() => {
       singleClickTimerRef.current = null;
-      if (onAdd ?? onAccentToggle ?? onClick) {
-        if (active) {
-          onAccentToggle?.();
-          onClick?.();
-        } else {
-          onAdd?.();
-          onClick?.();
-        }
+      if (didDragRef.current) {
+        didDragRef.current = false;
+        return;
+      }
+      const usePatch = onAdd != null || onAccentToggle != null;
+      if (usePatch) {
+        if (active) onAccentToggle?.();
+        else onAdd?.();
+      } else {
+        onClick?.();
       }
     }, SINGLE_CLICK_DELAY_MS);
-  }, [active, onAdd, onAccentToggle, onClick]);
+  }, [active, isDragging, onAdd, onAccentToggle, onClick]);
 
   const handleDoubleClick = useCallback(() => {
     if (singleClickTimerRef.current) {
@@ -60,6 +67,8 @@ export const StepButton: React.FC<StepButtonProps> = ({
   }, [active, onClear]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    didDragRef.current = false;
     setIsDragging(true);
     setDragStartY(e.clientY);
     setInitialVelocity(velocity);
@@ -67,7 +76,7 @@ export const StepButton: React.FC<StepButtonProps> = ({
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging) return;
-    
+    didDragRef.current = true;
     const deltaY = dragStartY - e.clientY;
     // Every 2 pixels is 1 unit of velocity (0-127 range)
     const newVelocity = clamp(initialVelocity + Math.round(deltaY / 2), 0, 127);
@@ -94,25 +103,41 @@ export const StepButton: React.FC<StepButtonProps> = ({
     };
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleClick();
+    } else if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      handleDoubleClick();
+    }
+  }, [handleClick, handleDoubleClick]);
+
   const velocityOpacity = 0.3 + (velocity / 127) * 0.7;
   const glowIntensity = (velocity / 127) * 15;
 
   return (
     <div className="relative flex-1 aspect-square md:aspect-auto md:h-12 max-w-[48px]">
       <motion.button
+        type="button"
+        role="button"
+        tabIndex={0}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
+        onKeyDown={handleKeyDown}
         whileTap={{ scale: 0.96 }}
         className={cn(
-          "w-full h-full rounded-[3px] border transition-all duration-150 relative overflow-hidden",
+          "w-full h-full rounded-[3px] border transition-all duration-150 relative overflow-hidden select-none cursor-pointer",
           // Default State (Smoother, less contrastive)
           "bg-[#2d2d2d] border-[#3d3d3d] shadow-[0_1px_2px_rgba(0,0,0,0.15)]",
           // Active State Base (Border & Glow)
           active && "border-[#FF8000]/60",
           // Accented (Less harsh)
           accented && !active && "border-[#4d4d4d] bg-[#353535]",
-          isDragging && "ring-1 ring-white/30 z-20"
+          isDragging && "ring-1 ring-white/30 z-20",
+          // Playhead (current step when playing)
+          isCurrentStep && "ring-2 ring-[#00D2FF] ring-inset z-10"
         )}
         style={{
           backgroundColor: active ? `rgba(230, 96, 0, ${velocityOpacity})` : undefined,
