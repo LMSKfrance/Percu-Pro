@@ -1,0 +1,1 @@
+Sasa: reduce clumps, add tiny ghost if stiff, clamp microshift if messy.

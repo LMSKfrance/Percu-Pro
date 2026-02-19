@@ -1,0 +1,5 @@
+Fix order:
+1) collisions: reduce non-anchor velocity then move one perc hit +/-1 step
+2) open hat spacing: remove weaker or shift by +2
+3) hat harshness: scale velocity 0.8..0.9 and add probability on non-accents
+4) too busy: probabilize percs then remove

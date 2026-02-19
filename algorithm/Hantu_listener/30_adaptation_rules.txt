@@ -1,0 +1,1 @@
+Breath, Lift, Shadow actions. block if collision risk high or swing stress high.

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Repeat, Square, Play, ExternalLink, ChevronUp } from "lucide-react";
+import { Repeat, Square, Play, ExternalLink, ChevronUp, ChevronDown } from "lucide-react";
 import { clamp } from "../../lib/utils";
 
 const DRAG_SENSITIVITY = 0.001; // 100px mouse => 10% param change
@@ -16,8 +16,13 @@ export type MasterDockCollapsedProps = {
   onToggleLoop: () => void;
   onBpmChange: (bpm: number) => void;
   onExpand: () => void;
+  /** When expanded, show chevron down and call this to collapse */
+  onCollapse?: () => void;
+  isExpanded?: boolean;
   /** When user clicks the bar (e.g. label area), scroll footer into view */
   onBarClick?: () => void;
+  /** When true, bar is inside footer container (no fixed positioning) so it doesn't overlap panel */
+  embedded?: boolean;
 };
 
 // Spark meter: 2px full-width, cyan signal, orange for peaks above -3dB (mock)
@@ -233,7 +238,10 @@ export function MasterDockCollapsed({
   onToggleLoop,
   onBpmChange,
   onExpand,
+  onCollapse,
+  isExpanded,
   onBarClick,
+  embedded,
 }: MasterDockCollapsedProps) {
   const [dynamicsThresh, setDynamicsThresh] = useState(50);
   const [driveDb, setDriveDb] = useState(0);
@@ -277,7 +285,7 @@ export function MasterDockCollapsed({
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50 flex flex-col border-t border-[#1F2128] bg-[#0D0E12] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
+      className={`flex flex-col border-t border-[#1F2128] bg-[#0D0E12] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] flex-shrink-0 ${embedded ? "" : "fixed bottom-0 left-0 right-0 z-50"}`}
       style={{ height: DOCK_HEIGHT }}
     >
       <SparkMeter />
@@ -378,17 +386,17 @@ export function MasterDockCollapsed({
           </div>
         </div>
 
-        {/* Export + Expand (Right) */}
+        {/* Export + Expand/Collapse (Right) */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <button className="flex items-center gap-2 px-3 h-8 rounded border border-[#E66000]/40 hover:border-[#E66000]/60 hover:bg-[#E66000]/10 transition-colors text-[9px] font-bold font-mono tracking-widest text-[#E66000]">
             <ExternalLink size={12} /> EXPORT
           </button>
           <button
-            onClick={onExpand}
+            onClick={isExpanded ? onCollapse : onExpand}
             className="w-9 h-9 rounded-full border border-[#1F2128] flex items-center justify-center hover:bg-white/[0.04] hover:border-white/10 transition-colors text-white/40 hover:text-white/60"
-            aria-label="Expand master section"
+            aria-label={isExpanded ? "Collapse master section" : "Expand master section"}
           >
-            <ChevronUp size={18} />
+            {isExpanded ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
           </button>
         </div>
       </div>

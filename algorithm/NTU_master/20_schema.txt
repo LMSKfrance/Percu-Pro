@@ -1,0 +1,19 @@
+PATTERN MODEL (PercuProV1)
+
+Global:
+- bars, stepsPerBar=16, tempoBpm
+- seed, density, swingType, swingPct, noiseAmount
+- cityProfile, influenceVector[], artistLenses[], mode
+
+Lane:
+- id, role (ANCHOR|PULSE|OFFBEAT|TEXTURE|ACCENT|FILL)
+- playStartOffsetSteps (0..15)
+- laneSwingPct (override)
+- steps[]: on, velocity(0..1), probability(0..1), microShiftMs, accent
+
+Patch ops:
+SET_STEP, CLEAR_STEP, SHIFT_LANE, SET_LANE_START, SET_LANE_SWING, SCALE_VELOCITY, SET_PROB, SET_MICROSHIFT
+
+Reason codes:
+ANCHOR_CLARITY, COLLISION_REDUCTION, POCKET_STRENGTH, SWING_ALIGNMENT, DENSITY_BALANCE,
+TIMELINE_INTERLOCK, VARIATION_SURFACE, MIX_SAFETY, MODE_COLOR, INTENTION_CLARITY, LOOP_ENDURANCE

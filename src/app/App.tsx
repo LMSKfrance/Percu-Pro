@@ -13,14 +13,11 @@ import {
   AudioLines, 
   Wind, 
   Maximize2, 
-  ExternalLink,
-  Save,
   Play,
   Square,
   Repeat,
-  ChevronDown
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { usePercuProV1Store } from "../core/store";
 import type { TrackId, EngineId } from "../core/types";
 
@@ -46,43 +43,11 @@ type MasterSectionProps = {
   onCollapse?: () => void;
 };
 
-const EXPANDED_MASTER_HEIGHT = 360;
+const EXPANDED_TOOLS_HEIGHT = 300;
 
-const MasterSection = ({ isPlaying, isLooping, onTogglePlay, onStop, onToggleLoop, onCollapse }: MasterSectionProps) => (
-  <div className="flex flex-col border-t border-white/[0.03] bg-[#181818] flex-none overflow-hidden" style={{ height: EXPANDED_MASTER_HEIGHT }}>
-    <div className="flex items-center justify-between px-12 h-[60px] border-b border-white/[0.03]">
-      <div className="flex items-center gap-8">
-        <span className="text-[13px] font-[Inter] font-bold uppercase tracking-widest text-[#D1D1CA]">
-          Stereo Master Output
-        </span>
-        <div className="flex items-center gap-4 border-l border-white/[0.05] pl-8">
-          <div className="flex items-center gap-2">
-             <div className="w-1.5 h-1.5 rounded-full bg-[#E66000]" />
-             <span className="text-[9px] font-mono font-bold text-white/10 tracking-widest uppercase">REC</span>
-          </div>
-          <div className="flex items-center gap-2">
-             <div className="w-1.5 h-1.5 rounded-full bg-[#00D2FF]" />
-             <span className="text-[9px] font-mono font-bold text-white/10 tracking-widest uppercase">SYNC_LOCKED</span>
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <button className="flex items-center gap-2 px-4 h-9 rounded-[2px] border border-white/[0.05] hover:bg-white/[0.02] transition-colors text-[9px] font-bold font-mono tracking-widest text-white/20">
-           <Save size={14} /> PERSIST STATE
-        </button>
-        <button className="flex items-center gap-2 px-4 h-9 rounded-[2px] bg-[#E66000]/10 border border-[#E66000]/30 hover:bg-[#E66000]/20 transition-colors text-[9px] font-bold font-mono tracking-widest text-[#E66000]">
-           <ExternalLink size={14} /> EXPORT BUFFER
-        </button>
-        {onCollapse && (
-          <button onClick={onCollapse} className="w-9 h-9 rounded-[2px] border border-white/[0.05] flex items-center justify-center hover:bg-white/[0.02] transition-colors text-white/20 hover:text-white/40" aria-label="Collapse master">
-            <ChevronDown size={18} />
-          </button>
-        )}
-      </div>
-    </div>
-
-    <div className="flex flex-1 min-h-0">
+/** Expandable tools only (Main Volume, Processing Bus, Session Control). Top bar stays fixed. */
+const MasterSectionBody = ({ isPlaying, isLooping, onTogglePlay, onStop, onToggleLoop }: MasterSectionProps) => (
+  <div className="flex h-full min-h-0">
       {/* Master Controls Section */}
       <div className="w-[380px] border-r border-white/[0.03] p-8 flex flex-col justify-between">
         <div className="flex flex-col gap-6">
@@ -156,7 +121,6 @@ const MasterSection = ({ isPlaying, isLooping, onTogglePlay, onStop, onToggleLoo
             <span className="text-[8px] font-mono text-white/10 uppercase tracking-[0.2em] mt-1">TRANSPORT_CLK</span>
          </div>
       </div>
-    </div>
   </div>
 );
 
@@ -286,46 +250,39 @@ export default function App() {
       {/* Sentinel for scroll-into-view when footer is in flow (e.g. after resize) */}
       <div ref={footerRef} className="flex-none" aria-hidden />
 
-      {/* Expanded master: fixed overlay on top of everything with smooth animation */}
-      <AnimatePresence mode="wait">
-        {masterExpanded ? (
-          <motion.div
-            key="master-expanded"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: EXPANDED_MASTER_HEIGHT, opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ type: "spring", damping: 26, stiffness: 260, opacity: { duration: 0.25 } }}
-            className="fixed bottom-0 left-0 right-0 z-[100] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.4)]"
-          >
-            <MasterSection
+      {/* Footer: expandable panel above, top bar at bottom; both in flow so no overlap */}
+      <div className="fixed bottom-0 left-0 right-0 z-[100] flex flex-col shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
+        <motion.div
+          initial={false}
+          animate={{ height: masterExpanded ? EXPANDED_TOOLS_HEIGHT : 0 }}
+          transition={{ type: "spring", damping: 26, stiffness: 260 }}
+          className="overflow-hidden bg-[#181818] border-t border-white/[0.03] flex-shrink-0"
+        >
+          <div className="h-full min-h-0 w-full">
+            <MasterSectionBody
               isPlaying={isPlaying}
               isLooping={isLooping}
               onTogglePlay={actions.togglePlay}
               onStop={actions.stop}
               onToggleLoop={actions.toggleLoop}
-              onCollapse={() => setMasterExpanded(false)}
             />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="master-dock"
-            initial={false}
-            className="fixed bottom-0 left-0 right-0 z-[100]"
-          >
-            <MasterDockCollapsed
-              isPlaying={isPlaying}
-              isLooping={isLooping}
-              bpm={bpm}
-              onTogglePlay={actions.togglePlay}
-              onStop={actions.stop}
-              onToggleLoop={actions.toggleLoop}
-              onBpmChange={actions.setBpm}
-              onExpand={handleExpandMaster}
-              onBarClick={scrollFooterIntoView}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </motion.div>
+        <MasterDockCollapsed
+          isPlaying={isPlaying}
+          isLooping={isLooping}
+          bpm={bpm}
+          onTogglePlay={actions.togglePlay}
+          onStop={actions.stop}
+          onToggleLoop={actions.toggleLoop}
+          onBpmChange={actions.setBpm}
+          onExpand={handleExpandMaster}
+          onCollapse={() => setMasterExpanded(false)}
+          isExpanded={masterExpanded}
+          onBarClick={scrollFooterIntoView}
+          embedded
+        />
+      </div>
     </div>
   );
 }

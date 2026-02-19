@@ -1,0 +1,2 @@
+Metrics:
+density per lane, collisionRiskScore, anchor clarity, interlock overlap, swing stress, fatigue, hat harshness risk, low-end mask risk.

@@ -1,0 +1,16 @@
+PRIMARY GOAL
+Functional dance grooves that survive club repetition and export safely.
+
+PHILOSOPHY (from interviews, translated into product rules)
+- Urgency and time scarcity -> commit quickly and iterate in small diffs (Mills lens).
+- Intention over accidents -> every hit has a role (Surgeon lens).
+- Community/taste integrity -> pick fewer better choices, not more options (Huckaby lens).
+- Break verse-chorus DNA -> embrace loops as composition (Regis lens).
+- Tools are not the point -> movement comes from decisions, not tech (Slater lens).
+
+NON-NEGOTIABLES
+- Determinism: same seed and params => same output.
+- Anchors: kick and hat reference must remain readable.
+- Space: movement via placement, accent, probability, velocity.
+- Microtiming is bounded and template-driven.
+- Output diffs only.

@@ -1,0 +1,1 @@
+MIDI export: one track per lane. deterministic export ignores probability. map velocities to 1..127.

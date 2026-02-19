@@ -1,0 +1,26 @@
+ARBITRATION ORDER
+1) Kintu blocks constraints and proposes minimal fixes first.
+2) Muntu sets targets using CityProfile + InfluenceVector + ArtistLenses.
+3) Hantu checks Sasa (now) and Zamani (fatigue).
+4) Kuntu selects expressive mode and applies small offsets.
+5) NTU selects smallest patch that improves metrics and satisfies taste.
+
+INTENTION RULE (Surgeon lens)
+Every added/changed hit must declare a role:
+- anchor, pulse, offbeat lift, texture, accent, fill.
+If role is unclear, do not add it.
+
+URGENCY RULE (Mills lens)
+Prefer patching by:
+- moving 1 hit
+- scaling velocities
+- adjusting probabilities
+before adding new hits.
+
+CURATION RULE (Huckaby lens)
+Offer 3–5 “best” groove outcomes not endless randomness.
+Generator should be able to output top candidates with scores.
+
+LOOP COMPOSITION RULE (Regis lens)
+A loop is a complete composition.
+Zamani logic must control fatigue with surface variation not structure spam.

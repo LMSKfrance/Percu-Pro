@@ -1,0 +1,5 @@
+microShift max 18ms and capped by BPM.
+swing safe 50–62. cap 58 above 135 BPM.
+density limits per lane.
+collision: avoid >3 strong hits per step (velocity >0.65).
+velocity clamp 0.15..1.0. ghosts <=0.35 and p<=0.5. anchors p>=0.9.
