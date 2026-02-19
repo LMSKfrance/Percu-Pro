@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { usePercuProV1Store } from "../core/store";
-import type { TrackId, EngineId } from "../core/types";
+import type { TrackId, EngineId, AppState } from "../core/types";
+import * as audioEngine from "../core/audio/AudioEngine";
 
 const SEQUENCER_TRACKS: { id: TrackId; label: string; engine: EngineId }[] = [
   { id: "kick", label: "Kick Drum", engine: "Percussion Engine" },
@@ -128,6 +129,30 @@ export default function App() {
   const { state, actions } = usePercuProV1Store();
   const { activeTrackId, expandedTrackId, activeEngine } = state.ui;
   const { isPlaying, isLooping, bpm } = state.transport;
+
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  const handleTogglePlay = useCallback(() => {
+    audioEngine.userGestureInit();
+    actions.togglePlay();
+  }, [actions.togglePlay]);
+
+  useEffect(() => {
+    if (state.transport.isPlaying) {
+      audioEngine.start((): AppState => stateRef.current);
+    } else {
+      audioEngine.stop();
+    }
+  }, [state.transport.isPlaying]);
+
+  useEffect(() => {
+    audioEngine.setBpm(state.transport.bpm);
+  }, [state.transport.bpm]);
+
+  useEffect(() => {
+    if (state.pattern) audioEngine.setPattern(state.pattern);
+  }, [state.pattern]);
 
   const [masterExpanded, setMasterExpanded] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
@@ -270,7 +295,7 @@ export default function App() {
             <MasterSectionBody
               isPlaying={isPlaying}
               isLooping={isLooping}
-              onTogglePlay={actions.togglePlay}
+              onTogglePlay={handleTogglePlay}
               onStop={actions.stop}
               onToggleLoop={actions.toggleLoop}
             />
@@ -280,7 +305,7 @@ export default function App() {
           isPlaying={isPlaying}
           isLooping={isLooping}
           bpm={bpm}
-          onTogglePlay={actions.togglePlay}
+          onTogglePlay={handleTogglePlay}
           onStop={actions.stop}
           onToggleLoop={actions.toggleLoop}
           onBpmChange={actions.setBpm}
