@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Header } from "./components/Header";
 import { GrooveGenerator } from "./components/GrooveGenerator";
 import { SequencerRow } from "./components/SequencerRow";
@@ -19,8 +19,10 @@ import {
   Repeat
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { usePercuProV1Store } from "../core/store";
+import type { TrackId, EngineId } from "../core/types";
 
-const SEQUENCER_TRACKS = [
+const SEQUENCER_TRACKS: { id: TrackId; label: string; engine: EngineId }[] = [
   { id: "kick", label: "Kick Drum", engine: "Percussion Engine" },
   { id: "snare", label: "Snare Drum", engine: "Percussion Engine" },
   { id: "hhc", label: "Hi-Hat Closed", engine: "Percussion Engine" },
@@ -31,7 +33,15 @@ const SEQUENCER_TRACKS = [
   { id: "clap", label: "Clap", engine: "Percussion Engine" }
 ];
 
-const MasterSection = () => (
+type MasterSectionProps = {
+  isPlaying: boolean;
+  isLooping: boolean;
+  onTogglePlay: () => void;
+  onStop: () => void;
+  onToggleLoop: () => void;
+};
+
+const MasterSection = ({ isPlaying, isLooping, onTogglePlay, onStop, onToggleLoop }: MasterSectionProps) => (
   <div className="flex flex-col border-t border-white/[0.03] bg-[#181818] flex-none z-20">
     <div className="flex items-center justify-between px-12 h-[60px] border-b border-white/[0.03]">
       <div className="flex items-center gap-8">
@@ -119,13 +129,13 @@ const MasterSection = () => (
       <div className="w-[320px] bg-[#121212] p-8 flex flex-col gap-6 border-l border-white/[0.03]">
          <span className="text-[10px] font-mono font-bold text-white/10 uppercase tracking-widest">Session Control</span>
          <div className="flex items-center justify-between">
-           <button className="w-12 h-12 rounded-full border border-white/[0.05] flex items-center justify-center hover:bg-white/[0.02] transition-colors group">
-             <Repeat size={18} className="text-white/10 group-hover:text-[#00D2FF]/60" />
+           <button onClick={onToggleLoop} className="w-12 h-12 rounded-full border border-white/[0.05] flex items-center justify-center hover:bg-white/[0.02] transition-colors group">
+             <Repeat size={18} className={`group-hover:text-[#00D2FF]/60 ${isLooping ? "text-white/10" : "text-white/5"}`} />
            </button>
-           <button className="w-12 h-12 rounded-full border border-white/[0.05] flex items-center justify-center hover:bg-white/[0.02] transition-colors group">
+           <button onClick={onStop} className="w-12 h-12 rounded-full border border-white/[0.05] flex items-center justify-center hover:bg-white/[0.02] transition-colors group">
              <Square size={18} className="text-white/10 group-hover:text-[#E66000]/60" fill="currentColor" />
            </button>
-           <button className="w-20 h-20 rounded-full border border-[#E66000]/20 shadow-[0_0_20px_rgba(230,96,0,0.1)] flex items-center justify-center hover:scale-105 transition-all group bg-[#E66000]/05">
+           <button onClick={onTogglePlay} className={`w-20 h-20 rounded-full border flex items-center justify-center hover:scale-105 transition-all group ${isPlaying ? "border-[#E66000]/40 shadow-[0_0_20px_rgba(230,96,0,0.2)] bg-[#E66000]/10" : "border-[#E66000]/20 shadow-[0_0_20px_rgba(230,96,0,0.1)] bg-[#E66000]/05"}`}>
              <Play size={24} className="text-[#E66000]/80 ml-1" fill="currentColor" />
            </button>
          </div>
@@ -139,17 +149,9 @@ const MasterSection = () => (
 );
 
 export default function App() {
-  const [activeTrackId, setActiveTrackId] = useState<string>("kick");
-  const [expandedTrackId, setExpandedTrackId] = useState<string | null>("kick");
-  const [activeEngine, setActiveEngine] = useState<string>("Percussion Engine");
-
-  // Sync logic: When activeTrackId changes, set the activeEngine
-  useEffect(() => {
-    const track = SEQUENCER_TRACKS.find(t => t.id === activeTrackId);
-    if (track) {
-      setActiveEngine(track.engine);
-    }
-  }, [activeTrackId]);
+  const { state, actions } = usePercuProV1Store();
+  const { activeTrackId, expandedTrackId, activeEngine } = state.ui;
+  const { isPlaying, isLooping } = state.transport;
 
   return (
     <div className="min-h-screen bg-[#F2F2EB] flex flex-col overflow-x-hidden selection:bg-[#E66000]/20">
@@ -188,8 +190,8 @@ export default function App() {
                 label={track.label} 
                 isActive={activeTrackId === track.id}
                 isExpanded={expandedTrackId === track.id}
-                onActivate={() => setActiveTrackId(track.id)}
-                onToggleExpand={() => setExpandedTrackId(expandedTrackId === track.id ? null : track.id)}
+                onActivate={() => actions.setActiveTrack(track.id)}
+                onToggleExpand={() => actions.toggleExpandedTrack(track.id)}
               />
             ))}
           </div>
@@ -211,19 +213,19 @@ export default function App() {
              title="Percussion Engine" 
              isActive={activeEngine === "Percussion Engine"}
              isExpanded={activeEngine === "Percussion Engine"}
-             onToggleExpand={() => setActiveEngine(activeEngine === "Percussion Engine" ? "" : "Percussion Engine")}
+             onToggleExpand={() => activeEngine === "Percussion Engine" ? actions.setActiveEngineFromActiveTrack() : actions.setActiveEngine("Percussion Engine")}
            />
            <SidebarAccordion 
              title="Poly-Chord Engine" 
              isActive={activeEngine === "Poly-Chord Engine"}
              isExpanded={activeEngine === "Poly-Chord Engine"}
-             onToggleExpand={() => setActiveEngine(activeEngine === "Poly-Chord Engine" ? "" : "Poly-Chord Engine")}
+             onToggleExpand={() => activeEngine === "Poly-Chord Engine" ? actions.setActiveEngineFromActiveTrack() : actions.setActiveEngine("Poly-Chord Engine")}
            />
            <SidebarAccordion 
              title="Acid Bass Line" 
              isActive={activeEngine === "Acid Bass Line"}
              isExpanded={activeEngine === "Acid Bass Line"}
-             onToggleExpand={() => setActiveEngine(activeEngine === "Acid Bass Line" ? "" : "Acid Bass Line")}
+             onToggleExpand={() => activeEngine === "Acid Bass Line" ? actions.setActiveEngineFromActiveTrack() : actions.setActiveEngine("Acid Bass Line")}
            />
            
            <div className="mt-auto p-8 border-t border-white/[0.03] bg-white/[0.01]">
@@ -242,7 +244,7 @@ export default function App() {
         </aside>
       </main>
 
-      <MasterSection />
+      <MasterSection isPlaying={isPlaying} isLooping={isLooping} onTogglePlay={actions.togglePlay} onStop={actions.stop} onToggleLoop={actions.toggleLoop} />
     </div>
   );
 }
