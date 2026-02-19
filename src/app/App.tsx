@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Header } from "./components/Header";
+import { MasterDockCollapsed, DOCK_HEIGHT } from "./components/MasterDockCollapsed";
 import { GrooveGenerator } from "./components/GrooveGenerator";
 import { SequencerRow } from "./components/SequencerRow";
 import { SidebarAccordion } from "./components/SidebarAccordion";
@@ -16,7 +17,8 @@ import {
   Save,
   Play,
   Square,
-  Repeat
+  Repeat,
+  ChevronDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { usePercuProV1Store } from "../core/store";
@@ -33,15 +35,18 @@ const SEQUENCER_TRACKS: { id: TrackId; label: string; engine: EngineId }[] = [
   { id: "clap", label: "Clap", engine: "Percussion Engine" }
 ];
 
+const STORAGE_KEY_MASTER = "percu_master_expanded";
+
 type MasterSectionProps = {
   isPlaying: boolean;
   isLooping: boolean;
   onTogglePlay: () => void;
   onStop: () => void;
   onToggleLoop: () => void;
+  onCollapse?: () => void;
 };
 
-const MasterSection = ({ isPlaying, isLooping, onTogglePlay, onStop, onToggleLoop }: MasterSectionProps) => (
+const MasterSection = ({ isPlaying, isLooping, onTogglePlay, onStop, onToggleLoop, onCollapse }: MasterSectionProps) => (
   <div className="flex flex-col border-t border-white/[0.03] bg-[#181818] flex-none z-20">
     <div className="flex items-center justify-between px-12 h-[60px] border-b border-white/[0.03]">
       <div className="flex items-center gap-8">
@@ -67,6 +72,11 @@ const MasterSection = ({ isPlaying, isLooping, onTogglePlay, onStop, onToggleLoo
         <button className="flex items-center gap-2 px-4 h-9 rounded-[2px] bg-[#E66000]/10 border border-[#E66000]/30 hover:bg-[#E66000]/20 transition-colors text-[9px] font-bold font-mono tracking-widest text-[#E66000]">
            <ExternalLink size={14} /> EXPORT BUFFER
         </button>
+        {onCollapse && (
+          <button onClick={onCollapse} className="w-9 h-9 rounded-[2px] border border-white/[0.05] flex items-center justify-center hover:bg-white/[0.02] transition-colors text-white/20 hover:text-white/40" aria-label="Collapse master">
+            <ChevronDown size={18} />
+          </button>
+        )}
       </div>
     </div>
 
@@ -151,10 +161,23 @@ const MasterSection = ({ isPlaying, isLooping, onTogglePlay, onStop, onToggleLoo
 export default function App() {
   const { state, actions } = usePercuProV1Store();
   const { activeTrackId, expandedTrackId, activeEngine } = state.ui;
-  const { isPlaying, isLooping } = state.transport;
+  const { isPlaying, isLooping, bpm } = state.transport;
+
+  const [masterExpanded, setMasterExpanded] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem(STORAGE_KEY_MASTER);
+    if (saved === "true") return true;
+    if (saved === "false") return false;
+    return window.innerWidth >= 1280;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_MASTER, String(masterExpanded));
+  }, [masterExpanded]);
 
   return (
-    <div className="min-h-screen bg-[#F2F2EB] flex flex-col overflow-x-hidden selection:bg-[#E66000]/20">
+    <div className="min-h-screen bg-[#F2F2EB] flex flex-col overflow-x-hidden selection:bg-[#E66000]/20"
+      style={!masterExpanded ? { paddingBottom: DOCK_HEIGHT } : undefined}>
       <Header />
       <GrooveGenerator />
 
@@ -244,7 +267,11 @@ export default function App() {
         </aside>
       </main>
 
-      <MasterSection isPlaying={isPlaying} isLooping={isLooping} onTogglePlay={actions.togglePlay} onStop={actions.stop} onToggleLoop={actions.toggleLoop} />
+      {masterExpanded ? (
+        <MasterSection isPlaying={isPlaying} isLooping={isLooping} onTogglePlay={actions.togglePlay} onStop={actions.stop} onToggleLoop={actions.toggleLoop} onCollapse={() => setMasterExpanded(false)} />
+      ) : (
+        <MasterDockCollapsed isPlaying={isPlaying} isLooping={isLooping} bpm={bpm} onTogglePlay={actions.togglePlay} onStop={actions.stop} onToggleLoop={actions.toggleLoop} onBpmChange={actions.setBpm} onExpand={() => setMasterExpanded(true)} />
+      )}
     </div>
   );
 }
