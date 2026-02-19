@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Header } from "./components/Header";
 import { MasterDockCollapsed, DOCK_HEIGHT } from "./components/MasterDockCollapsed";
 import { GrooveGenerator } from "./components/GrooveGenerator";
@@ -46,8 +46,10 @@ type MasterSectionProps = {
   onCollapse?: () => void;
 };
 
+const EXPANDED_MASTER_HEIGHT = 360;
+
 const MasterSection = ({ isPlaying, isLooping, onTogglePlay, onStop, onToggleLoop, onCollapse }: MasterSectionProps) => (
-  <div className="flex flex-col border-t border-white/[0.03] bg-[#181818] flex-none z-20">
+  <div className="flex flex-col border-t border-white/[0.03] bg-[#181818] flex-none overflow-hidden" style={{ height: EXPANDED_MASTER_HEIGHT }}>
     <div className="flex items-center justify-between px-12 h-[60px] border-b border-white/[0.03]">
       <div className="flex items-center gap-8">
         <span className="text-[13px] font-[Inter] font-bold uppercase tracking-widest text-[#D1D1CA]">
@@ -80,7 +82,7 @@ const MasterSection = ({ isPlaying, isLooping, onTogglePlay, onStop, onToggleLoo
       </div>
     </div>
 
-    <div className="flex h-[300px]">
+    <div className="flex flex-1 min-h-0">
       {/* Master Controls Section */}
       <div className="w-[380px] border-r border-white/[0.03] p-8 flex flex-col justify-between">
         <div className="flex flex-col gap-6">
@@ -171,6 +173,20 @@ export default function App() {
     return window.innerWidth >= 1280;
   });
 
+  const footerRef = useRef<HTMLDivElement>(null);
+
+  const scrollFooterIntoView = useCallback(() => {
+    footerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, []);
+
+  const handleExpandMaster = useCallback(() => {
+    setMasterExpanded(true);
+    // Scroll so the footer area is in view when expanding (in case page was scrolled up)
+    requestAnimationFrame(() => {
+      footerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    });
+  }, []);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_MASTER, String(masterExpanded));
   }, [masterExpanded]);
@@ -181,7 +197,7 @@ export default function App() {
       <Header />
       <GrooveGenerator />
 
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex overflow-hidden min-h-0">
         {/* Sidebar Left: Sequencer */}
         <section className="flex-1 min-w-[880px] flex flex-col overflow-y-auto scrollbar-hide border-r border-[#121212]/5">
           <div className="flex items-center justify-between px-8 h-[64px] border-b border-[#121212]/5 flex-none bg-[#F2F2EB]/80 backdrop-blur-md sticky top-0 z-30">
@@ -267,11 +283,49 @@ export default function App() {
         </aside>
       </main>
 
-      {masterExpanded ? (
-        <MasterSection isPlaying={isPlaying} isLooping={isLooping} onTogglePlay={actions.togglePlay} onStop={actions.stop} onToggleLoop={actions.toggleLoop} onCollapse={() => setMasterExpanded(false)} />
-      ) : (
-        <MasterDockCollapsed isPlaying={isPlaying} isLooping={isLooping} bpm={bpm} onTogglePlay={actions.togglePlay} onStop={actions.stop} onToggleLoop={actions.toggleLoop} onBpmChange={actions.setBpm} onExpand={() => setMasterExpanded(true)} />
-      )}
+      {/* Sentinel for scroll-into-view when footer is in flow (e.g. after resize) */}
+      <div ref={footerRef} className="flex-none" aria-hidden />
+
+      {/* Expanded master: fixed overlay on top of everything with smooth animation */}
+      <AnimatePresence mode="wait">
+        {masterExpanded ? (
+          <motion.div
+            key="master-expanded"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: EXPANDED_MASTER_HEIGHT, opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: "spring", damping: 26, stiffness: 260, opacity: { duration: 0.25 } }}
+            className="fixed bottom-0 left-0 right-0 z-[100] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.4)]"
+          >
+            <MasterSection
+              isPlaying={isPlaying}
+              isLooping={isLooping}
+              onTogglePlay={actions.togglePlay}
+              onStop={actions.stop}
+              onToggleLoop={actions.toggleLoop}
+              onCollapse={() => setMasterExpanded(false)}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="master-dock"
+            initial={false}
+            className="fixed bottom-0 left-0 right-0 z-[100]"
+          >
+            <MasterDockCollapsed
+              isPlaying={isPlaying}
+              isLooping={isLooping}
+              bpm={bpm}
+              onTogglePlay={actions.togglePlay}
+              onStop={actions.stop}
+              onToggleLoop={actions.toggleLoop}
+              onBpmChange={actions.setBpm}
+              onExpand={handleExpandMaster}
+              onBarClick={scrollFooterIntoView}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

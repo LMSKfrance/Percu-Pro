@@ -16,6 +16,8 @@ export type MasterDockCollapsedProps = {
   onToggleLoop: () => void;
   onBpmChange: (bpm: number) => void;
   onExpand: () => void;
+  /** When user clicks the bar (e.g. label area), scroll footer into view */
+  onBarClick?: () => void;
 };
 
 // Spark meter: 2px full-width, cyan signal, orange for peaks above -3dB (mock)
@@ -231,6 +233,7 @@ export function MasterDockCollapsed({
   onToggleLoop,
   onBpmChange,
   onExpand,
+  onBarClick,
 }: MasterDockCollapsedProps) {
   const [dynamicsThresh, setDynamicsThresh] = useState(50);
   const [driveDb, setDriveDb] = useState(0);
@@ -279,8 +282,17 @@ export function MasterDockCollapsed({
     >
       <SparkMeter />
       <div className="flex-1 flex items-center justify-between px-6 gap-6 min-h-0">
-        {/* Status (Left) */}
-        <div className="flex items-center gap-4 flex-shrink-0">
+        {/* Status (Left) - clickable to scroll footer into view */}
+        <div
+          {...(onBarClick && {
+            role: "button" as const,
+            tabIndex: 0,
+            onClick: onBarClick,
+            onKeyDown: (e: React.KeyboardEvent) => e.key === "Enter" && onBarClick(),
+            "aria-label": "Scroll to footer",
+          })}
+          className={`flex items-center gap-4 flex-shrink-0 select-none ${onBarClick ? "cursor-pointer hover:opacity-90 transition-opacity" : ""}`}
+        >
           <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-white/50">
             STEREO MASTER OUTPUT
           </span>
