@@ -16,6 +16,7 @@ import {
   Play,
   Square,
   Repeat,
+  Shuffle,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { usePercuProV1Store } from "../core/store";
@@ -155,11 +156,11 @@ export default function App() {
   }, [state.pattern]);
 
   const [masterExpanded, setMasterExpanded] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
+    if (typeof window === "undefined") return false;
     const saved = localStorage.getItem(STORAGE_KEY_MASTER);
     if (saved === "true") return true;
     if (saved === "false") return false;
-    return window.innerWidth >= 1280;
+    return false;
   });
 
   const footerRef = useRef<HTMLDivElement>(null);
@@ -191,9 +192,16 @@ export default function App() {
         <section className="flex-1 min-w-[880px] flex flex-col overflow-y-auto scrollbar-hide border-r border-[#121212]/5">
           <div className="flex items-center justify-between px-8 h-[64px] border-b border-[#121212]/5 flex-none bg-[#F2F2EB]/80 backdrop-blur-md sticky top-0 z-30">
              <div className="flex items-center gap-4">
-               <span className="text-[12px] font-[Inter] font-bold uppercase tracking-widest text-[#121212]/60">
-                 Pattern Sequencer
-               </span>
+               <button
+                 type="button"
+                 onClick={(e) => actions.fullRandomizePattern(state, e.shiftKey ? { unsafe: true } : undefined)}
+                 className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
+               >
+                 <Shuffle size={14} strokeWidth={2.5} className="text-[#121212]/50" />
+                 <span className="text-[12px] font-[Inter] font-bold uppercase tracking-widest text-[#121212]/60">
+                   Pattern Sequencer
+                 </span>
+               </button>
                <div className="w-[1px] h-3 bg-[#121212]/10" />
                <span className="text-[9px] font-mono text-[#121212]/30 font-bold uppercase tracking-widest">
                  16 STEPS_32B
@@ -225,8 +233,12 @@ export default function App() {
                   onToggleExpand={() => actions.toggleExpandedTrack(track.id)}
                   steps={lane?.steps.map((s) => s.on)}
                   velocities={lane?.steps.map((s) => Math.round(s.velocity * 100))}
+                  accents={lane?.steps.map((s) => s.accent)}
                   onToggleStep={(i) => actions.setStep(track.id, i, !lane?.steps[i]?.on)}
                   onVelocityChange={(i, v) => actions.setStepVelocity(track.id, i, v / 100)}
+                  onStepAdd={(i) => actions.setStepOn(track.id, i)}
+                  onStepClear={(i) => actions.clearStep(track.id, i)}
+                  onStepAccentToggle={(i) => actions.setStepAccent(track.id, i, !lane?.steps[i]?.accent)}
                 />
               );
             })}

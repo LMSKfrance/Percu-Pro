@@ -2,6 +2,8 @@ import { useReducer, useCallback } from "react";
 import type { AppState, TrackId, EngineId, GrooveCandidate } from "./types";
 import type { PatchOp } from "./patternTypes";
 import { createInitialPatternState, applyPatternPatch } from "./patternTypes";
+import { buildFullRandomizeOps } from "./groove/fullRandomize";
+import { hashStringToSeed } from "./audio/rng";
 
 /** Map track id -> engine for reducer (no UI dependency) */
 const ENGINE_BY_TRACK: Record<TrackId, EngineId> = {
@@ -52,6 +54,7 @@ type Action =
   | { type: "setGrooveTop3"; payload: GrooveCandidate[] | null }
   | { type: "setGrooveLastCritique"; payload: { reason: string; message: string }[] }
   | { type: "setGrooveLastAppliedCount"; payload: number }
+  | { type: "setLastRandomize"; payload: { seedUsed: number; appliedCount: number } }
   | { type: "applyCandidate"; payload: string };
 
 export function reducer(state: AppState, action: Action): AppState {
@@ -179,6 +182,13 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         groove: { ...(state.groove ?? { top3: null, lastCritique: [], lastAppliedCount: 0 }), lastAppliedCount: action.payload },
       };
+    case "setLastRandomize": {
+      const { seedUsed, appliedCount } = action.payload;
+      return {
+        ...state,
+        groove: { ...(state.groove ?? { top3: null, lastCritique: [], lastAppliedCount: 0 }), lastRandomizeSeed: seedUsed, lastRandomizeApplied: appliedCount },
+      };
+    }
     case "applyCandidate": {
       const id = action.payload;
       const top3 = state.groove?.top3 ?? null;
@@ -234,6 +244,40 @@ export function usePercuProV1Store() {
     }, []),
     setStepVelocity: useCallback((laneId: TrackId, stepIndex: number, velocity: number) => {
       dispatch({ type: "setStepVelocity", payload: { laneId, stepIndex, velocity } });
+    }, []),
+    /** Turn step ON with defaults (patch op). Default velocity 0.75, probability 1, microShiftMs 0, accent false. */
+    setStepOn: useCallback((laneId: TrackId, stepIndex: number, velocity = 0.75) => {
+      dispatch({
+        type: "applyPatternPatch",
+        payload: [
+          { op: "SET_STEP", laneId, stepIndex, on: true, velocity: Math.max(0.25, Math.min(1, velocity)), probability: 1, microShiftMs: 0, accent: false },
+        ],
+      });
+    }, []),
+    /** Turn step OFF (patch op). */
+    clearStep: useCallback((laneId: TrackId, stepIndex: number) => {
+      dispatch({
+        type: "applyPatternPatch",
+        payload: [{ op: "CLEAR_STEP", laneId, stepIndex }],
+      });
+    }, []),
+    /** Set step accent (patch op). Step must exist; other fields preserved. */
+    setStepAccent: useCallback((laneId: TrackId, stepIndex: number, accent: boolean) => {
+      dispatch({
+        type: "applyPatternPatch",
+        payload: [{ op: "SET_STEP", laneId, stepIndex, on: true, accent }],
+      });
+    }, []),
+    fullRandomizePattern: useCallback((currentState: AppState, options?: { unsafe?: boolean }) => {
+      const pattern = currentState.pattern ?? createInitialPatternState(currentState.transport.bpm, 42);
+      const baseSeed = pattern.seed ?? 1;
+      const ops = buildFullRandomizeOps(pattern, baseSeed, options ?? {});
+      if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+        const checksum = hashStringToSeed(JSON.stringify(ops));
+        console.log("[fullRandomize] seedUsed:", baseSeed, "ops:", ops.length, "checksum:", checksum);
+      }
+      dispatch({ type: "applyPatternPatch", payload: ops });
+      dispatch({ type: "setLastRandomize", payload: { seedUsed: baseSeed, appliedCount: ops.length } });
     }, []),
     setGrooveTop3: useCallback((payload: GrooveCandidate[] | null) => {
       dispatch({ type: "setGrooveTop3", payload });

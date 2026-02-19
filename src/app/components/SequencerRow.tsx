@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { StepButton } from "./StepButton";
-import { ChevronRight, ChevronLeft, Power, Sliders, Dices } from "lucide-react";
+import { ChevronRight, ChevronLeft, Power, Sliders, Shuffle } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { TrackId } from "../../core/types";
 
@@ -17,8 +17,12 @@ interface SequencerRowProps {
   onActivate?: () => void;
   steps?: boolean[];
   velocities?: number[];
+  accents?: boolean[];
   onToggleStep?: (index: number) => void;
   onVelocityChange?: (index: number, velocity: number) => void;
+  onStepAdd?: (index: number) => void;
+  onStepClear?: (index: number) => void;
+  onStepAccentToggle?: (index: number) => void;
 }
 
 export const SequencerRow: React.FC<SequencerRowProps> = ({
@@ -30,8 +34,12 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
   onActivate,
   steps: controlledSteps,
   velocities: controlledVelocities,
+  accents: controlledAccents,
   onToggleStep,
   onVelocityChange,
+  onStepAdd,
+  onStepClear,
+  onStepAccentToggle,
 }) => {
   const [localSteps, setLocalSteps] = useState<boolean[]>(DEFAULT_STEPS);
   const [localVelocities, setLocalVelocities] = useState<number[]>(DEFAULT_VELS);
@@ -40,10 +48,11 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
   const isControlled = controlledSteps != null && controlledVelocities != null;
   const activeSteps = isControlled ? controlledSteps : localSteps;
   const velocities = isControlled ? controlledVelocities : localVelocities;
+  const usePatchCallbacks = isControlled && onStepAdd != null && onStepClear != null;
 
   const toggleStep = (index: number) => {
-    if (isControlled && onToggleStep) onToggleStep(index);
-    else {
+    if (!usePatchCallbacks && isControlled && onToggleStep) onToggleStep(index);
+    else if (!isControlled) {
       const next = [...localSteps];
       next[index] = !next[index];
       setLocalSteps(next);
@@ -123,10 +132,13 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
               key={i}
               index={i}
               active={active && power}
-              accented={i % 4 === 0}
+              accented={controlledAccents?.[i] ?? (i % 4 === 0)}
               velocity={velocities[i]}
-              onClick={() => toggleStep(i)}
+              onClick={!usePatchCallbacks ? () => toggleStep(i) : undefined}
               onVelocityChange={(val) => handleVelocityChange(i, val)}
+              onAdd={usePatchCallbacks ? () => { onStepAdd?.(i); onActivate?.(); } : undefined}
+              onClear={usePatchCallbacks ? () => { onStepClear?.(i); onActivate?.(); } : undefined}
+              onAccentToggle={usePatchCallbacks ? () => { onStepAccentToggle?.(i); onActivate?.(); } : undefined}
             />
           ))}
         </div>
@@ -170,7 +182,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
 
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2 text-[#121212]/40">
-                <Dices size={14} strokeWidth={2.5} />
+                <Shuffle size={14} strokeWidth={2.5} />
                 <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Step Probabilities</span>
               </div>
               <div className="flex gap-2">

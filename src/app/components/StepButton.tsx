@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn, clamp } from "../../lib/utils";
+
+const SINGLE_CLICK_DELAY_MS = 220;
 
 interface StepButtonProps {
   active?: boolean;
@@ -9,6 +11,12 @@ interface StepButtonProps {
   index: number;
   velocity: number;
   onVelocityChange: (val: number) => void;
+  /** Single click when step is OFF: add step (patch op). */
+  onAdd?: () => void;
+  /** Double click when step is ON: clear step (patch op). */
+  onClear?: () => void;
+  /** Single click when step is ON: toggle accent (patch op). */
+  onAccentToggle?: () => void;
 }
 
 export const StepButton: React.FC<StepButtonProps> = ({
@@ -18,17 +26,40 @@ export const StepButton: React.FC<StepButtonProps> = ({
   index,
   velocity,
   onVelocityChange,
+  onAdd,
+  onClear,
+  onAccentToggle,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
   const [initialVelocity, setInitialVelocity] = useState(velocity);
+  const singleClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleClick = useCallback(() => {
+    if (singleClickTimerRef.current) clearTimeout(singleClickTimerRef.current);
+    singleClickTimerRef.current = setTimeout(() => {
+      singleClickTimerRef.current = null;
+      if (onAdd ?? onAccentToggle ?? onClick) {
+        if (active) {
+          onAccentToggle?.();
+          onClick?.();
+        } else {
+          onAdd?.();
+          onClick?.();
+        }
+      }
+    }, SINGLE_CLICK_DELAY_MS);
+  }, [active, onAdd, onAccentToggle, onClick]);
+
+  const handleDoubleClick = useCallback(() => {
+    if (singleClickTimerRef.current) {
+      clearTimeout(singleClickTimerRef.current);
+      singleClickTimerRef.current = null;
+    }
+    if (active) onClear?.();
+  }, [active, onClear]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // If not active, clicking it should make it active first
-    if (!active) {
-      onClick?.();
-    }
-    
     setIsDragging(true);
     setDragStartY(e.clientY);
     setInitialVelocity(velocity);
@@ -70,6 +101,8 @@ export const StepButton: React.FC<StepButtonProps> = ({
     <div className="relative flex-1 aspect-square md:aspect-auto md:h-12 max-w-[48px]">
       <motion.button
         onMouseDown={handleMouseDown}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         whileTap={{ scale: 0.96 }}
         className={cn(
           "w-full h-full rounded-[3px] border transition-all duration-150 relative overflow-hidden",

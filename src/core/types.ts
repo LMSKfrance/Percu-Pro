@@ -37,6 +37,8 @@ export interface GrooveState {
   top3: GrooveCandidate[] | null;
   lastCritique: { reason: string; message: string }[];
   lastAppliedCount: number;
+  lastRandomizeSeed?: number;
+  lastRandomizeApplied?: number;
 }
 
 /** Pattern state is optional; when present, sequencer rows are controlled from store (patternPatch applies here). */
