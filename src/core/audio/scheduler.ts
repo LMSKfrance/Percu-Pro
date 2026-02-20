@@ -22,6 +22,15 @@ export type TriggerStepFn = (
   pitchSemitones: number
 ) => void;
 
+export type OnStepTriggerFn = (
+  laneId: TrackId,
+  stepIndex: number,
+  timeSec: number,
+  velocity: number,
+  accent: boolean,
+  pitchSemitones: number
+) => void;
+
 export type GetAudioTime = () => number;
 
 let schedulerId: number | null = null;
@@ -34,7 +43,8 @@ function clamp(x: number, a: number, b: number): number {
 export function startScheduler(
   getState: GetState,
   getAudioTime: GetAudioTime,
-  triggerStep: TriggerStepFn
+  triggerStep: TriggerStepFn,
+  onStepTrigger?: OnStepTriggerFn
 ): void {
   if (running) return;
   running = true;
@@ -104,6 +114,7 @@ export function startScheduler(
         if (isOddStep) t += swingDelaySec;
 
         triggerStep(laneId, stepIndex, t, step.velocity ?? 0.8, step.accent ?? false, step.pitch ?? 0);
+        onStepTrigger?.(laneId, stepIndex, t, step.velocity ?? 0.8, step.accent ?? false, step.pitch ?? 0);
       }
 
       if (typeof import.meta !== "undefined" && import.meta.env?.DEV && stepIndex % 8 === 0) {

@@ -6,7 +6,7 @@
 import type { PatternState } from "../patternTypes";
 import type { TrackId } from "../types";
 import type { AppState } from "../types";
-import { startScheduler, stopScheduler } from "./scheduler";
+import { startScheduler, stopScheduler, type OnStepTriggerFn } from "./scheduler";
 import type { VoiceTrigger } from "./voices/types";
 import { triggerKick } from "./voices/kick";
 import { createHatClosedVoice } from "./voices/hat";
@@ -119,7 +119,7 @@ export function userGestureInit(): void {
   }
 }
 
-export function start(getState: GetState): void {
+export function start(getState: GetState, onStepTrigger?: OnStepTriggerFn): void {
   userGestureInit();
   if (!ctx) return;
   ensureGraph();
@@ -129,7 +129,8 @@ export function start(getState: GetState): void {
   startScheduler(
     getState,
     () => ctx!.currentTime,
-    triggerStep
+    triggerStep,
+    onStepTrigger
   );
 }
 

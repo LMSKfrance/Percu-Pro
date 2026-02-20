@@ -1,14 +1,16 @@
 import React, { useState, createContext, useContext, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Sparkles, 
   Drum,
-  ChevronDown, 
+  ChevronLeft,
+  ChevronRight,
   Layers, 
   Zap,
   RefreshCcw
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn, CONTROL_STRIP_STYLE } from "../../lib/utils";
 import { usePercuProV1Store } from "../../core/store";
 import { createInitialPatternState, applyPatternPatch, type PatternState } from "../../core/patternTypes";
 import type { GrooveCandidate, AppState } from "../../core/types";
@@ -299,6 +301,11 @@ export const GrooveGeneratorHeaderBlock: React.FC = () => {
   );
 };
 
+function applyPreset(setActivePreset: (id: string) => void, presetId: string) {
+  setActivePreset(presetId);
+  setGrooveTemplate(presetToTemplateId(presetId));
+}
+
 export const GrooveGeneratorBar: React.FC = () => {
   const { state, actions } = usePercuProV1Store();
   const selectedVariant = state.ui.cityProfile;
@@ -312,9 +319,71 @@ export const GrooveGeneratorBar: React.FC = () => {
     setIntensity,
   } = useGrooveGenerator();
 
+  const [presetDropdownOpen, setPresetDropdownOpen] = useState(false);
+  const presetTriggerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const currentIndex = GROOVE_PRESETS.findIndex((p) => p.id === activePreset);
+  const prevPreset = () => {
+    const idx = currentIndex <= 0 ? GROOVE_PRESETS.length - 1 : currentIndex - 1;
+    applyPreset(setActivePreset, GROOVE_PRESETS[idx].id);
+  };
+  const nextPreset = () => {
+    const idx = currentIndex >= GROOVE_PRESETS.length - 1 ? 0 : currentIndex + 1;
+    applyPreset(setActivePreset, GROOVE_PRESETS[idx].id);
+  };
+
+  useEffect(() => {
+    if (!presetDropdownOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (
+        presetTriggerRef.current?.contains(e.target as Node) ||
+        dropdownRef.current?.contains(e.target as Node)
+      ) return;
+      setPresetDropdownOpen(false);
+    };
+    window.addEventListener("mousedown", onMouseDown);
+    return () => window.removeEventListener("mousedown", onMouseDown);
+  }, [presetDropdownOpen]);
+
+  const dropdownContent = presetDropdownOpen && typeof document !== "undefined" && (
+    createPortal(
+      <div
+        ref={dropdownRef}
+        className="fixed bg-[#181818] rounded-[4px] border border-white/10 shadow-xl p-1 min-w-[180px] z-[9999]"
+        style={{
+          top: presetTriggerRef.current
+            ? presetTriggerRef.current.getBoundingClientRect().bottom + 4
+            : 0,
+          left: presetTriggerRef.current
+            ? presetTriggerRef.current.getBoundingClientRect().left
+            : 0,
+        }}
+      >
+        {GROOVE_PRESETS.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => {
+              applyPreset(setActivePreset, p.id);
+              setPresetDropdownOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-[2px] text-[11px] font-sans font-bold text-left transition-colors",
+              activePreset === p.id ? "bg-[#E66000]/10 text-[#E66000]" : "text-white/40 hover:bg-white/05 hover:text-white/80"
+            )}
+          >
+            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }} />
+            {p.name}
+          </button>
+        ))}
+      </div>,
+      document.body
+    )
+  );
+
   return (
-    <div className="w-full h-[80px] px-12 bg-[#F2F2EB] border-b border-[#121212]/05 grid grid-cols-[1fr_auto_1fr] items-center gap-8 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#E66000]/02 to-transparent pointer-events-none" />
+    <div className="w-full h-[80px] px-12 bg-[#F2F2EB] border-b border-[#121212]/05 grid grid-cols-[1fr_auto_1fr] items-center gap-8 relative z-30">
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#E66000]/02 to-transparent pointer-events-none overflow-hidden" />
 
       {/* Left Section: Presets + Parameters */}
       <div className="flex items-end gap-8 min-w-0">
@@ -323,41 +392,43 @@ export const GrooveGeneratorBar: React.FC = () => {
             <Sparkles size={12} strokeWidth={2.5} />
             <span className="text-[9px] uppercase font-bold tracking-widest font-mono">Algorithm Presets</span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative group">
-              <button className="flex items-center gap-3 px-4 py-2 bg-[#121212]/03 border border-[#121212]/05 rounded-[4px] hover:bg-[#121212]/06 transition-all min-w-[180px] justify-between">
+          <div className="flex items-center gap-1">
+            <div ref={presetTriggerRef} className={cn(CONTROL_STRIP_STYLE.container)}>
+              <button
+                type="button"
+                onClick={prevPreset}
+                className={cn(CONTROL_STRIP_STYLE.navButton, CONTROL_STRIP_STYLE.navButtonLeft)}
+                aria-label="Previous preset"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPresetDropdownOpen((o) => !o)}
+                className={cn(CONTROL_STRIP_STYLE.titleButton, "justify-center")}
+              >
                 <div className="flex items-center gap-2">
-                  <div 
-                    className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(230,96,0,0.4)]" 
-                    style={{ backgroundColor: GROOVE_PRESETS.find(p => p.id === activePreset)?.color }} 
+                  <div
+                    className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(230,96,0,0.4)]"
+                    style={{ backgroundColor: GROOVE_PRESETS.find(p => p.id === activePreset)?.color }}
                   />
                   <span className="text-[12px] font-sans font-bold text-[#121212]/80">
                     {GROOVE_PRESETS.find(p => p.id === activePreset)?.name}
                   </span>
                 </div>
-                <ChevronDown size={14} className="text-[#121212]/20" />
               </button>
-              <div className="absolute top-full left-0 mt-1 w-full bg-[#181818] rounded-[4px] border border-white/10 shadow-xl opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all z-[100] p-1">
-                {GROOVE_PRESETS.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      setActivePreset(p.id);
-                      setGrooveTemplate(presetToTemplateId(p.id));
-                    }}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-[2px] text-[11px] font-sans font-bold text-left transition-colors",
-                      activePreset === p.id ? "bg-[#E66000]/10 text-[#E66000]" : "text-white/40 hover:bg-white/05 hover:text-white/80"
-                    )}
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }} />
-                    {p.name}
-                  </button>
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={nextPreset}
+                className={cn(CONTROL_STRIP_STYLE.navButton, CONTROL_STRIP_STYLE.navButtonRight)}
+                aria-label="Next preset"
+              >
+                <ChevronRight size={14} />
+              </button>
             </div>
           </div>
         </div>
+        {dropdownContent}
         <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-8 max-w-[420px] content-end">
           <div className="flex flex-col gap-1.5">
             <div className="flex justify-between items-center text-[9px] font-mono font-bold uppercase tracking-widest h-4">
