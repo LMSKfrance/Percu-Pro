@@ -15,6 +15,9 @@ interface SequencerRowProps {
   onToggleExpand?: () => void;
   isActive?: boolean;
   onActivate?: () => void;
+  /** When true, instrument is muted (no sound); triggers stay visible, shown grey */
+  isMuted?: boolean;
+  onMuteToggle?: () => void;
   steps?: boolean[];
   velocities?: number[];
   accents?: boolean[];
@@ -33,6 +36,8 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
   onToggleExpand,
   isActive = false,
   onActivate,
+  isMuted = false,
+  onMuteToggle,
   steps: controlledSteps,
   velocities: controlledVelocities,
   accents: controlledAccents,
@@ -45,7 +50,6 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
 }) => {
   const [localSteps, setLocalSteps] = useState<boolean[]>(DEFAULT_STEPS);
   const [localVelocities, setLocalVelocities] = useState<number[]>(DEFAULT_VELS);
-  const [power, setPower] = useState(true);
 
   const isControlled = controlledSteps != null && controlledVelocities != null;
   const activeSteps = isControlled ? controlledSteps : localSteps;
@@ -106,16 +110,16 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
         {/* Toggle & Label Section */}
         <div className="flex items-center gap-4 w-[240px] flex-none">
           <button 
-            onClick={(e) => { e.stopPropagation(); setPower(!power); }}
+            onClick={(e) => { e.stopPropagation(); onMuteToggle?.(); }}
             onDoubleClick={(e) => e.stopPropagation()}
             className={cn(
               "w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-300",
-              power 
+              !isMuted 
                 ? "bg-[#E66000] border-[#E66000] shadow-[0_0_10px_rgba(230,96,0,0.2)]"
-                : "bg-white/10 border-black/5 text-black/15 hover:text-black/30"
+                : "bg-[#6b6b6b] border-[#5a5a5a] text-white/70 hover:bg-[#5a5a5a] hover:border-[#4d4d4d]"
             )}
           >
-            <Power size={14} strokeWidth={3} color={power ? "white" : "currentColor"} />
+            <Power size={14} strokeWidth={3} color={!isMuted ? "white" : "currentColor"} />
           </button>
           
           <div className="flex flex-col flex-1 cursor-pointer group select-none min-w-0" onClick={handleBarClick}>
@@ -161,7 +165,8 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
             <StepButton 
               key={i}
               index={i}
-              active={(active ?? false) && power}
+              active={active ?? false}
+              muted={isMuted}
               accented={controlledAccents?.[i] ?? (i % 4 === 0)}
               velocity={velocities[i] ?? 100}
               isCurrentStep={currentStepIndex === i}

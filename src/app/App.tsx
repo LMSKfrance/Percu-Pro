@@ -250,6 +250,8 @@ export default function App() {
                   label={track.label}
                   isActive={activeTrackId === track.id}
                   isExpanded={expandedTrackId === track.id}
+                  isMuted={state.ui.laneMuted?.[track.id] ?? false}
+                  onMuteToggle={() => actions.setLaneMuted(track.id, !(state.ui.laneMuted?.[track.id] ?? false))}
                   onActivate={() => actions.setActiveTrack(track.id)}
                   onToggleExpand={() => actions.toggleExpandedTrack(track.id)}
                   steps={steps}

@@ -27,6 +27,8 @@ export interface UiState {
   activeEngine: EngineId;
   /** City profile for groove generator (e.g. Detroit, Berlin, Tbilisi) */
   cityProfile: string;
+  /** Per-lane mute (power off); when true, instrument is silent but triggers stay visible */
+  laneMuted: Partial<Record<TrackId, boolean>>;
 }
 
 export interface GrooveCandidate {

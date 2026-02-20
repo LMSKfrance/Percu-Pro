@@ -19,7 +19,7 @@ const initialBpm = 132;
 const initialSeed = 42;
 
 export const initialState: AppState = {
-  ui: { activeTrackId: "kick", expandedTrackId: null, activeEngine: "Percussion Engine", cityProfile: "Berlin" },
+  ui: { activeTrackId: "kick", expandedTrackId: null, activeEngine: "Percussion Engine", cityProfile: "Berlin", laneMuted: {} },
   transport: { bpm: initialBpm, isPlaying: false, isLooping: true },
   pattern: createInitialPatternState(initialBpm, initialSeed),
   groove: { top3: null, lastCritique: [], lastAppliedCount: 0 },
@@ -31,6 +31,7 @@ type Action =
   | { type: "setActiveEngine"; payload: EngineId }
   | { type: "setActiveEngineFromActiveTrack" }
   | { type: "setCityProfile"; payload: string }
+  | { type: "setLaneMuted"; payload: { laneId: TrackId; muted: boolean } }
   | { type: "togglePlay" }
   | { type: "stop" }
   | { type: "toggleLoop" }
@@ -61,6 +62,16 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, ui: { ...state.ui, activeEngine: ENGINE_BY_TRACK[state.ui.activeTrackId] } };
     case "setCityProfile":
       return { ...state, ui: { ...state.ui, cityProfile: action.payload } };
+    case "setLaneMuted": {
+      const { laneId, muted } = action.payload;
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          laneMuted: { ...state.ui.laneMuted, [laneId]: muted },
+        },
+      };
+    }
     case "togglePlay":
       return { ...state, transport: { ...state.transport, isPlaying: !state.transport.isPlaying } };
     case "stop":
@@ -135,6 +146,7 @@ type StoreValue = {
     setActiveEngine: (engineId: EngineId) => void;
     setActiveEngineFromActiveTrack: () => void;
     setCityProfile: (cityProfile: string) => void;
+    setLaneMuted: (laneId: TrackId, muted: boolean) => void;
     togglePlay: () => void;
     stop: () => void;
     toggleLoop: () => void;
@@ -163,6 +175,7 @@ export function PercuProStoreProvider({ children }: { children: React.ReactNode 
     setActiveEngine: useCallback((engineId: EngineId) => dispatch({ type: "setActiveEngine", payload: engineId }), []),
     setActiveEngineFromActiveTrack: useCallback(() => dispatch({ type: "setActiveEngineFromActiveTrack" }), []),
     setCityProfile: useCallback((cityProfile: string) => dispatch({ type: "setCityProfile", payload: cityProfile }), []),
+    setLaneMuted: useCallback((laneId: TrackId, muted: boolean) => dispatch({ type: "setLaneMuted", payload: { laneId, muted } }), []),
     togglePlay: useCallback(() => dispatch({ type: "togglePlay" }), []),
     stop: useCallback(() => dispatch({ type: "stop" }), []),
     toggleLoop: useCallback(() => dispatch({ type: "toggleLoop" }), []),

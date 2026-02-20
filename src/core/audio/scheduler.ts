@@ -75,6 +75,7 @@ export function startScheduler(
       const laneIds = Object.keys(pattern?.lanes ?? {}) as TrackId[];
 
       for (const laneId of laneIds) {
+        if (state.ui?.laneMuted?.[laneId]) continue; // Muted lane: no trigger, triggers stay visible in UI
         const lane = pattern?.lanes[laneId];
         if (!lane) continue;
 
