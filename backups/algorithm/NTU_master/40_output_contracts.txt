@@ -1,0 +1,5 @@
+OUTPUT CONTRACT
+- paramPatch (changed keys only)
+- patternPatch (diff ops)
+- critique (<=6)
+- meta {seedUsed, tempoBpm, cityProfile, influenceVector, artistLenses, mode, confidenceOverall, reasonCodes}

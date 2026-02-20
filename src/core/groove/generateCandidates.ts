@@ -10,9 +10,9 @@ import { STEPS_PER_BAR } from "../patternTypes";
 import { mulberry32 } from "./rng";
 import type { PatternPatchOp, LaneRole } from "./patchTypes";
 
-const TRACK_IDS: TrackId[] = ["kick", "snare", "hhc", "hho", "perc1", "perc2", "rim", "clap"];
-const PERC_LANES: TrackId[] = ["perc1", "perc2", "rim", "clap"];
-const OFFBEAT_LANES: TrackId[] = ["hho", "rim"];
+const TRACK_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
+const PERC_LANES: TrackId[] = ["hiPerc", "lowPerc", "clap", "chord", "subPerc"];
+const OFFBEAT_LANES: TrackId[] = ["noise", "subPerc"];
 
 export interface GenerateCandidatesInput {
   seed: number;
@@ -154,13 +154,13 @@ export function generateCandidates(input: GenerateCandidatesInput): Candidate[] 
   const driveOps: PatternPatchOp[] = [];
   driveOps.push({
     op: "SCALE_VELOCITY",
-    laneId: "hhc",
+    laneId: "noise",
     scale: 1.05,
     meta: { reasonCode: "MODE_COLOR" },
   });
   driveOps.push({
     op: "SET_VELOCITY",
-    laneId: "hhc",
+    laneId: "noise",
     stepIndex: 0,
     velocity: 0.9,
     meta: { reasonCode: "MODE_COLOR" },

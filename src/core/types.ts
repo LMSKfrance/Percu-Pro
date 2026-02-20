@@ -1,19 +1,20 @@
-/** Track ids matching SEQUENCER_TRACKS */
+/** Track ids matching SEQUENCER_TRACKS: Noise, Hi Perc, Low Perc, Clap, Chord, Bass, Sub Perc, Kick */
 export type TrackId =
-  | "kick"
-  | "snare"
-  | "hhc"
-  | "hho"
-  | "perc1"
-  | "perc2"
-  | "rim"
-  | "clap";
+  | "noise"
+  | "hiPerc"
+  | "lowPerc"
+  | "clap"
+  | "chord"
+  | "bass"
+  | "subPerc"
+  | "kick";
 
-/** Engine panel ids */
+/** Engine / instrument family (for internal mapping) */
 export type EngineId =
+  | "Noise Engine"
   | "Percussion Engine"
-  | "Poly-Chord Engine"
-  | "Acid Bass Line";
+  | "Chord Engine"
+  | "Bass Engine";
 
 export interface TransportState {
   bpm: number;

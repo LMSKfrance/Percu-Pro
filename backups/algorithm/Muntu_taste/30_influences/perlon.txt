@@ -1,0 +1,1 @@
+Targets: groove via micro-variation. Moves: ghost hits (p 0.25..0.45), velocity shaping per 4 steps, tiny microshift template, call/response percs.

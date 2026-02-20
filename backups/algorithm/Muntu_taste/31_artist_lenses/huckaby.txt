@@ -1,0 +1,8 @@
+HUCKABY LENS
+- Integrity: fewer stronger decisions.
+- Community taste: curate, don't spam.
+
+Rules
+- generator returns top 3 candidates with scores
+- reduce gimmicks: no constant fills
+- prioritize groove clarity and warmth via velocity

@@ -9,12 +9,10 @@ import { STEPS_PER_BAR } from "../patternTypes";
 import { hashStringToSeed } from "../audio/rng";
 import { mulberry32 } from "../audio/rng";
 
-const TRACK_IDS: TrackId[] = ["kick", "snare", "hhc", "hho", "perc1", "perc2", "rim", "clap"];
+const TRACK_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
 
 const ANCHOR_LANES: Set<TrackId> = new Set(["kick"]);
-const HAT_CLOSED: TrackId = "hhc";
-const HAT_OPEN: TrackId = "hho";
-const PERC_LANES: Set<TrackId> = new Set(["perc1", "perc2", "rim", "clap", "snare"]);
+const PERC_LANES: Set<TrackId> = new Set(["noise", "hiPerc", "lowPerc", "clap", "chord", "subPerc"]);
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
@@ -52,35 +50,30 @@ export function buildFullRandomizeOps(
     }
   }
 
-  // 2) Hats: hhc velocity/prob contour; hho sparse, no adjacent opens
-  const hhc = pattern.lanes.hhc;
-  if (hhc) {
-    for (let i = 0; i < hhc.steps.length; i++) {
-      const on = hhc.steps[i].on;
+  // 2) Noise (hats): velocity/prob contour
+  const noiseLane = pattern.lanes.noise;
+  if (noiseLane) {
+    for (let i = 0; i < noiseLane.steps.length; i++) {
+      const on = noiseLane.steps[i].on;
       const vel = on ? clamp(0.4 + rng() * 0.6, 0.25, 1) : 0.8;
       const prob = on ? clamp(0.7 + rng() * 0.3, 0.5, 1) : 1;
-      ops.push({ op: "SET_STEP", laneId: "hhc", stepIndex: i, on, velocity: vel, probability: prob, microShiftMs: 0, accent: false });
-    }
-  }
-  const hho = pattern.lanes.hho;
-  if (hho) {
-    const noAdjacent = [0, 2, 4, 6, 8, 10, 12, 14];
-    const nOpen = Math.floor(rng() * 3) + 1;
-    const opens: number[] = [];
-    const pool = [...noAdjacent];
-    for (let k = 0; k < nOpen && pool.length > 0; k++) {
-      const idx = Math.floor(rng() * pool.length);
-      opens.push(pool.splice(idx, 1)[0]);
-    }
-    for (let i = 0; i < 16; i++) {
-      const on = opens.includes(i);
-      const vel = on ? 0.6 + rng() * 0.4 : 0.8;
-      ops.push({ op: "SET_STEP", laneId: "hho", stepIndex: i, on, velocity: vel, probability: 1, microShiftMs: 0, accent: false });
+      ops.push({ op: "SET_STEP", laneId: "noise", stepIndex: i, on, velocity: vel, probability: prob, microShiftMs: 0, accent: false });
     }
   }
 
-  // 3) Perc lanes: randomize on/off, velocity, probability, microShift, optional playStartOffset
-  for (const laneId of ["snare", "clap", "rim", "perc1", "perc2"] as TrackId[]) {
+  // 3) Bass: keep or randomize
+  const bassLane = pattern.lanes.bass;
+  if (bassLane) {
+    const density = 0.2 + rng() * 0.3;
+    for (let i = 0; i < bassLane.steps.length; i++) {
+      const on = rng() < density;
+      const vel = on ? clamp(0.4 + rng() * 0.6, 0.25, 1) : 0.8;
+      ops.push({ op: "SET_STEP", laneId: "bass", stepIndex: i, on, velocity: vel, probability: 1, microShiftMs: 0, accent: false });
+    }
+  }
+
+  // 4) Perc lanes: randomize on/off, velocity, probability, microShift, optional playStartOffset
+  for (const laneId of ["hiPerc", "lowPerc", "clap", "chord", "subPerc"] as TrackId[]) {
     const lane = pattern.lanes[laneId];
     if (!lane) continue;
     const density = 0.2 + rng() * 0.4;
@@ -106,7 +99,7 @@ export function buildFullRandomizeOps(
     }
   }
 
-  // 4) Collision reduction: if >3 strong hits at same step, reduce/clear
+  // 5) Collision reduction: if >3 strong hits at same step, reduce/clear
   const stepCount: number[] = new Array(16).fill(0);
   const stepVelocities: { laneId: TrackId; stepIndex: number; velocity: number }[] = [];
   for (const op of ops) {

@@ -1,0 +1,10 @@
+Mode offsets suggestions (Kintu caps apply):
+CLEAN_FUNCTIONAL: density -0.05 swing -1 noise -0.10 accent +0.10
+GRIT_PRESSURE: density +0.05 noise +0.12 accent +0.20
+CEREMONIAL_INTERLOCK: timeline +0.25 ghostProb +0.10
+INDUSTRIAL_TENSION: density -0.08 noise bursts +0.08 accent +0.25
+PLAYFUL_SYNC: swing +2 laneSwingVariance +0.08 ghostProb +0.08
+DISCO_LIFT: swing +2 offbeatHat +0.15 velocityWarmth +0.10
+ACID_FOCUS: density -0.06 accent +0.15 midTransientCap stronger
+MOTORIK_DRIVE: swing -2 hhcDensity +0.10 microshift low
+FUTURIST_FUNK: timeline +0.15 ghostProb +0.10 accents precise

@@ -124,7 +124,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
           
           <div className="flex flex-col flex-1 cursor-pointer group select-none min-w-0" onClick={handleBarClick}>
             <span className={cn(
-              "text-[13px] font-bold font-[Inter] tracking-wide uppercase transition-colors duration-300",
+              "text-[13px] font-bold font-sans tracking-wide uppercase transition-colors duration-300",
               isActive ? "text-[#E66000]" : "text-[#121212]/80 group-hover:text-[#121212]"
             )}>
               {label}

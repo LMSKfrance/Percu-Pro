@@ -109,17 +109,17 @@ const DEFAULT_STEP: StepData = {
 };
 
 const LANE_ROLES: Record<TrackId, LaneRole> = {
-  kick: "ANCHOR",
-  snare: "PULSE",
-  hhc: "PULSE",
-  hho: "OFFBEAT",
-  perc1: "TEXTURE",
-  perc2: "TEXTURE",
-  rim: "ACCENT",
+  noise: "PULSE",
+  hiPerc: "TEXTURE",
+  lowPerc: "TEXTURE",
   clap: "ACCENT",
+  chord: "TEXTURE",
+  bass: "PULSE",
+  subPerc: "OFFBEAT",
+  kick: "ANCHOR",
 };
 
-const TRACK_IDS: TrackId[] = ["kick", "snare", "hhc", "hho", "perc1", "perc2", "rim", "clap"];
+const TRACK_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
 
 export function createInitialPatternState(tempoBpm: number, seed: number): PatternState {
   const lanes: Record<TrackId, LaneState> = {} as Record<TrackId, LaneState>;
@@ -127,8 +127,8 @@ export function createInitialPatternState(tempoBpm: number, seed: number): Patte
     const steps: StepData[] = Array.from({ length: STEPS_PER_BAR }, (_, i) => {
       const on =
         (id === "kick" && i % 4 === 0) ||
-        (id === "hhc" && i % 2 === 0) ||
-        (id === "snare" && i === 4) ||
+        (id === "noise" && i % 2 === 0) ||
+        (id === "clap" && (i === 4 || i === 12)) ||
         false;
       return { ...DEFAULT_STEP, on, velocity: on ? 0.85 : 0.8 };
     });

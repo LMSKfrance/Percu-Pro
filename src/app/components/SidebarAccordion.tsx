@@ -45,7 +45,7 @@ export const SidebarAccordion: React.FC<SidebarAccordionProps> = ({
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-start">
             <span className={cn(
-              "text-[12px] font-bold font-[Inter] uppercase tracking-widest transition-colors duration-300",
+              "text-[12px] font-bold font-sans uppercase tracking-widest transition-colors duration-300",
               isActive ? "text-[#E66000]" : "text-[#D1D1CA]"
             )}>
               {title}

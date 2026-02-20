@@ -178,7 +178,7 @@ export const GrooveGeneratorHeaderBlock: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
-        <span className="text-[12px] font-[Inter] font-bold text-white uppercase tracking-widest">
+        <span className="text-[12px] font-sans font-bold text-white uppercase tracking-widest">
           Generate Groove
         </span>
         <motion.div
@@ -232,7 +232,7 @@ export const GrooveGeneratorBar: React.FC = () => {
                     className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(230,96,0,0.4)]" 
                     style={{ backgroundColor: GROOVE_PRESETS.find(p => p.id === activePreset)?.color }} 
                   />
-                  <span className="text-[12px] font-[Inter] font-bold text-[#121212]/80">
+                  <span className="text-[12px] font-sans font-bold text-[#121212]/80">
                     {GROOVE_PRESETS.find(p => p.id === activePreset)?.name}
                   </span>
                 </div>
@@ -244,7 +244,7 @@ export const GrooveGeneratorBar: React.FC = () => {
                     key={p.id}
                     onClick={() => setActivePreset(p.id)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-[2px] text-[11px] font-[Inter] font-bold text-left transition-colors",
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-[2px] text-[11px] font-sans font-bold text-left transition-colors",
                       activePreset === p.id ? "bg-[#E66000]/10 text-[#E66000]" : "text-white/40 hover:bg-white/05 hover:text-white/80"
                     )}
                   >
@@ -303,7 +303,7 @@ export const GrooveGeneratorBar: React.FC = () => {
             key={v}
             onClick={() => setSelectedVariant(v)}
             className={cn(
-              "flex-1 relative z-10 py-1.5 text-[10px] font-[Inter] font-bold uppercase tracking-[0.2em] transition-colors duration-400 rounded-[4px]",
+              "flex-1 relative z-10 py-1.5 text-[10px] font-sans font-bold uppercase tracking-[0.2em] transition-colors duration-400 rounded-[4px]",
               selectedVariant === v ? "text-white" : "text-[#121212]/30 hover:text-[#121212]/60"
             )}
           >

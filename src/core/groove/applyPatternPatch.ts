@@ -7,7 +7,7 @@ import type { PatternState, LaneState, StepData } from "../patternTypes";
 import { STEPS_PER_BAR } from "../patternTypes";
 import type { PatternPatchOp, ApplyPatternPatchResult } from "./patchTypes";
 
-const TRACK_IDS: TrackId[] = ["kick", "snare", "hhc", "hho", "perc1", "perc2", "rim", "clap"];
+const TRACK_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
 const VALID_LANES = new Set<TrackId>(TRACK_IDS);
 
 function deepCopyPattern(p: PatternState): PatternState {

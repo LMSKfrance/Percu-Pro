@@ -1,0 +1,9 @@
+MILLS LENS
+- Urgency: commit and iterate. Avoid endless randomization.
+- Precision: kick + hat reference must be surgical.
+- Motion via subtraction: remove events to increase power.
+
+Rules
+- prefer moving hits over adding
+- if density high, reduce percs first
+- microshift small and repeatable

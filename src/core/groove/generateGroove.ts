@@ -10,7 +10,7 @@ import { STEPS_PER_BAR, applyPatternPatch } from "../patternTypes";
 import { generate, type GeneratorInput, type GeneratorOutput } from "../algorithm/generator";
 import type { GrooveCandidate } from "../types";
 
-const LANE_IDS: TrackId[] = ["kick", "snare", "hhc", "hho", "perc1", "perc2", "rim", "clap"];
+const LANE_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
 
 export interface GenerateGrooveResult {
   replacePatchOps: PatchOp[];

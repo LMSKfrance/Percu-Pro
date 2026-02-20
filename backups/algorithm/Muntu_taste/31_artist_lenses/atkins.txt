@@ -1,0 +1,8 @@
+ATKINS LENS
+- Machine funk: keep it synthetic but still funky.
+- Percussive sound design: filters and synthesis can generate drums.
+
+Rules
+- encourage syncopation in non-kick lanes
+- keep kick stable, let percs dance
+- if user selects 'futurist' mode, increase timeline usage and probability ghosts

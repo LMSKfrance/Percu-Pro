@@ -9,13 +9,13 @@ import type { AppState } from "../types";
 import { startScheduler, stopScheduler } from "./scheduler";
 import type { VoiceTrigger } from "./voices/types";
 import { triggerKick } from "./voices/kick";
-import { createSnareVoice } from "./voices/snare";
-import { createHatClosedVoice, createHatOpenVoice } from "./voices/hat";
+import { createHatClosedVoice } from "./voices/hat";
 import { createClapVoice } from "./voices/clap";
 import { createRimVoice } from "./voices/rim";
 import { createPercVoice } from "./voices/perc";
+import { triggerAcid } from "./voices/acid";
 
-const TRACK_IDS: TrackId[] = ["kick", "snare", "hhc", "hho", "perc1", "perc2", "rim", "clap"];
+const TRACK_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
 
 export type GetState = () => AppState;
 
@@ -26,14 +26,14 @@ const laneVoices: Record<TrackId, VoiceTrigger> = {} as Record<TrackId, VoiceTri
 
 function buildVoiceMap(): void {
   if (laneVoices.kick) return;
-  laneVoices.kick = triggerKick;
-  laneVoices.snare = createSnareVoice(sharedNoise);
-  laneVoices.hhc = createHatClosedVoice(sharedNoise);
-  laneVoices.hho = createHatOpenVoice(sharedNoise);
+  laneVoices.noise = createHatClosedVoice(sharedNoise);
+  laneVoices.hiPerc = createPercVoice(sharedNoise);
+  laneVoices.lowPerc = createPercVoice(sharedNoise);
   laneVoices.clap = createClapVoice(sharedNoise);
-  laneVoices.rim = createRimVoice(sharedNoise);
-  laneVoices.perc1 = createPercVoice(sharedNoise);
-  laneVoices.perc2 = createPercVoice(sharedNoise);
+  laneVoices.chord = createPercVoice(sharedNoise);
+  laneVoices.bass = triggerAcid;
+  laneVoices.subPerc = createRimVoice(sharedNoise);
+  laneVoices.kick = triggerKick;
 }
 
 let masterGain: GainNode | null = null;
@@ -101,7 +101,8 @@ function triggerStep(
   const voice = laneVoices[laneId];
   const dest = laneGains[laneId];
   if (!voice || !dest) return;
-  const params = laneId === "perc1" ? { freq: 400 } : laneId === "perc2" ? { freq: 280 } : undefined;
+  const params =
+    laneId === "hiPerc" ? { freq: 400 } : laneId === "lowPerc" ? { freq: 280 } : laneId === "chord" ? { freq: 520 } : undefined;
   voice(ctx, dest, timeSec, velocity, accent, params);
 }
 

@@ -5,14 +5,14 @@ import { createInitialPatternState, applyPatternPatch } from "./patternTypes";
 import { buildFullRandomizeOps } from "./groove/fullRandomize";
 
 const ENGINE_BY_TRACK: Record<TrackId, EngineId> = {
+  noise: "Noise Engine",
+  hiPerc: "Percussion Engine",
+  lowPerc: "Percussion Engine",
+  clap: "Noise Engine",
+  chord: "Chord Engine",
+  bass: "Bass Engine",
+  subPerc: "Percussion Engine",
   kick: "Percussion Engine",
-  snare: "Percussion Engine",
-  hhc: "Percussion Engine",
-  hho: "Percussion Engine",
-  perc1: "Poly-Chord Engine",
-  perc2: "Poly-Chord Engine",
-  rim: "Acid Bass Line",
-  clap: "Percussion Engine",
 };
 
 const initialBpm = 132;

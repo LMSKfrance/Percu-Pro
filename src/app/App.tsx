@@ -3,7 +3,7 @@ import { Header } from "./components/Header";
 import { MasterDockCollapsed, DOCK_HEIGHT } from "./components/MasterDockCollapsed";
 import { GrooveGeneratorProvider, GrooveGeneratorBar } from "./components/GrooveGenerator";
 import { SequencerRow } from "./components/SequencerRow";
-import { SidebarAccordion } from "./components/SidebarAccordion";
+import { InstrumentControlsPanel } from "./components/InstrumentControlsPanel";
 import { FXCard } from "./components/FXCard";
 import { Fader } from "./components/Fader";
 import { Knob } from "./components/Knob";
@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { usePercuProV1Store } from "../core/store";
-import type { TrackId, EngineId, AppState } from "../core/types";
+import type { TrackId, AppState } from "../core/types";
 import { STEPS_PER_BAR } from "../core/patternTypes";
 import * as audioEngine from "../core/audio/AudioEngine";
 
@@ -27,15 +27,15 @@ const EMPTY_STEPS = Object.freeze(new Array(STEPS_PER_BAR).fill(false));
 const DEFAULT_VELS = Object.freeze(new Array(STEPS_PER_BAR).fill(100));
 const EMPTY_ACCENTS = Object.freeze(new Array(STEPS_PER_BAR).fill(false));
 
-const SEQUENCER_TRACKS: { id: TrackId; label: string; engine: EngineId }[] = [
-  { id: "kick", label: "Kick Drum", engine: "Percussion Engine" },
-  { id: "snare", label: "Snare Drum", engine: "Percussion Engine" },
-  { id: "hhc", label: "Hi-Hat Closed", engine: "Percussion Engine" },
-  { id: "hho", label: "Hi-Hat Open", engine: "Percussion Engine" },
-  { id: "perc1", label: "Percussion 1", engine: "Poly-Chord Engine" },
-  { id: "perc2", label: "Percussion 2", engine: "Poly-Chord Engine" },
-  { id: "rim", label: "Rimshot", engine: "Acid Bass Line" },
-  { id: "clap", label: "Clap", engine: "Percussion Engine" },
+const SEQUENCER_TRACKS: { id: TrackId; label: string }[] = [
+  { id: "noise", label: "Noise (Hats)" },
+  { id: "hiPerc", label: "Hi Perc" },
+  { id: "lowPerc", label: "Low Perc" },
+  { id: "clap", label: "Clap" },
+  { id: "chord", label: "Chord" },
+  { id: "bass", label: "Bass" },
+  { id: "subPerc", label: "Sub Perc" },
+  { id: "kick", label: "Kick" },
 ];
 
 const STORAGE_KEY_MASTER = "percu_master_expanded";
@@ -127,7 +127,7 @@ const MasterSectionBody = ({
 
 export default function App() {
   const { state, actions } = usePercuProV1Store();
-  const { activeTrackId, expandedTrackId, activeEngine } = state.ui;
+  const { activeTrackId, expandedTrackId } = state.ui;
   const { isPlaying, isLooping, bpm } = state.transport;
 
   const stateRef = useRef(state);
@@ -211,7 +211,7 @@ export default function App() {
         <section className="flex-1 min-w-[880px] flex flex-col overflow-y-auto scrollbar-hide border-r border-[#121212]/5">
           <div className="flex items-center justify-between px-8 h-[64px] border-b border-[#121212]/5 flex-none bg-[#F2F2EB]/80 backdrop-blur-md sticky top-0 z-30">
             <div className="flex items-center gap-4">
-              <span className="text-[12px] font-[Inter] font-bold uppercase tracking-widest text-[#121212]/60">
+              <span className="text-[12px] font-sans font-bold uppercase tracking-widest text-[#121212]/60">
                 Pattern Sequencer
               </span>
               <div className="w-[1px] h-3 bg-[#121212]/10" />
@@ -270,33 +270,16 @@ export default function App() {
 
         <aside className="w-[560px] flex-none bg-[#181818] flex flex-col overflow-y-auto border-l border-white/[0.03]">
           <div className="flex items-center justify-between px-6 h-[64px] border-b border-white/[0.03] flex-none sticky top-0 z-30 bg-[#181818]/90 backdrop-blur-md">
-            <span className="text-[11px] font-[Inter] font-bold uppercase tracking-widest text-white/40">
-              DSP Rack Engines
+            <span className="text-[11px] font-sans font-bold uppercase tracking-widest text-white/40">
+              Instrument Controls
             </span>
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-[#00D2FF]/40 animate-pulse" />
-              <span className="text-[8px] font-mono text-white/20 font-bold uppercase tracking-[0.2em]">LOW_LATENCY_DA_CORE</span>
+              <span className="text-[8px] font-mono text-white/20 font-bold uppercase tracking-[0.2em]">DSP RACK</span>
             </div>
           </div>
 
-          <SidebarAccordion
-            title="Percussion Engine"
-            isActive={activeEngine === "Percussion Engine"}
-            isExpanded={activeEngine === "Percussion Engine"}
-            onToggleExpand={() => (activeEngine === "Percussion Engine" ? actions.setActiveEngineFromActiveTrack() : actions.setActiveEngine("Percussion Engine"))}
-          />
-          <SidebarAccordion
-            title="Poly-Chord Engine"
-            isActive={activeEngine === "Poly-Chord Engine"}
-            isExpanded={activeEngine === "Poly-Chord Engine"}
-            onToggleExpand={() => (activeEngine === "Poly-Chord Engine" ? actions.setActiveEngineFromActiveTrack() : actions.setActiveEngine("Poly-Chord Engine"))}
-          />
-          <SidebarAccordion
-            title="Acid Bass Line"
-            isActive={activeEngine === "Acid Bass Line"}
-            isExpanded={activeEngine === "Acid Bass Line"}
-            onToggleExpand={() => (activeEngine === "Acid Bass Line" ? actions.setActiveEngineFromActiveTrack() : actions.setActiveEngine("Acid Bass Line"))}
-          />
+          <InstrumentControlsPanel selectedTrackId={activeTrackId} />
 
           <div className="mt-auto p-8 border-t border-white/[0.03] bg-white/[0.01]">
             <div className="flex flex-col gap-6">

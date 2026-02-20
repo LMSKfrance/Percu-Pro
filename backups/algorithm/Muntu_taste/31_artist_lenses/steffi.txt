@@ -1,0 +1,8 @@
+STEFFI LENS
+- DJ-tested functionality: arrangement clarity and mix safety.
+- Groove must translate on a system.
+
+Rules
+- control hat harshness via velocity scaling
+- keep offbeats readable
+- enforce collision reduction to protect mix

@@ -1,0 +1,1 @@
+MOTOR_16 and HAT_BREATH templates. Use for hats/percs not kick.

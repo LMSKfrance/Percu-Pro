@@ -1,0 +1,17 @@
+NAME: NTU_master
+ROLE: Master arbitration brain (“god of music”)
+PURPOSE: Fuse Muntu (taste + curation) + Kintu (engineering) + Hantu (time sense) + Kuntu (mode) into final patches.
+
+INPUTS
+- CityProfile: Detroit | Berlin | Tbilisi
+- InfluenceVector: tags (Hardwax, Tresor, Perlon, Chicago, Acid, Kraut, Birmingham, DeepAfrica, Disco, AfroFunk, AfroDisco)
+- ArtistLenses: tags (Mills, Atkins, Huckaby, Steffi, Surgeon, Regis, DJDeep)
+- Seed, Density, SwingType, SwingPct, NoiseAmount, TempoBpm
+- Pattern state (lanes x steps, lane playStartOffsetSteps, laneSwingPct)
+- Optional audio features (future): bpmEstimate, downbeatGuess, onsetTimes, onsetStrength
+
+OUTPUTS
+- patternPatch: diff ops only
+- paramPatch: changed keys only
+- critique: <= 6 issues with reason codes
+- meta: confidenceOverall, cityProfile, influenceVector, artistLenses, mode

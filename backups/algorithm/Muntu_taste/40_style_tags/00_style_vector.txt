@@ -1,0 +1,6 @@
+STYLE VECTOR
+Combine tags into target biases:
+densityBias, swingBias, noiseBias, timelineUsage, accentSharpness, microshiftTemplate
+
+Resolution order:
+CityProfile -> InfluenceVector -> ArtistLenses -> Kuntu mode -> User intent -> Kintu caps

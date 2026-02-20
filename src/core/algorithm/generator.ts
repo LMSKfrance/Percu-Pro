@@ -17,7 +17,7 @@ import type {
 } from "../patternTypes";
 import { STEPS_PER_BAR } from "../patternTypes";
 
-const TRACK_IDS: TrackId[] = ["kick", "snare", "hhc", "hho", "perc1", "perc2", "rim", "clap"];
+const TRACK_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
 
 /** Deterministic hash from seed + string for reproducible "random" choices */
 function hash(seed: number, s: string): number {
@@ -80,7 +80,7 @@ function buildPatch(
   }
 
   // 2) Perc lanes: syncopation (AfroFunk) or interlock (AfroDisco)
-  const percLanes: TrackId[] = ["perc1", "perc2", "rim", "clap"];
+  const percLanes: TrackId[] = ["hiPerc", "lowPerc", "clap", "subPerc"];
   for (const lid of percLanes) {
     const lane = state.lanes[lid];
     if (!lane) continue;
@@ -106,19 +106,19 @@ function buildPatch(
     }
   }
 
-  // 3) Hi-hat: avoid constant hats (AfroFunk); optional lane swing
-  if (afroFunk && state.lanes.hhc) {
-    const drop = hash(seed, "hhc-drop") % 4;
-    ops.push({ op: "CLEAR_STEP", laneId: "hhc", stepIndex: drop * 4 + 2 });
+  // 3) Noise (hats): avoid constant hats (AfroFunk); optional lane swing
+  if (afroFunk && state.lanes.noise) {
+    const drop = hash(seed, "noise-drop") % 4;
+    ops.push({ op: "CLEAR_STEP", laneId: "noise", stepIndex: drop * 4 + 2 });
     if (useSurgeon) ops[ops.length - 1] = ensureRoleForOp(ops[ops.length - 1], "PULSE") as PatchOp;
   }
 
   // 4) FUTURIST_FUNK: accents precise (set accent on selected steps)
-  if (futuristFunk && state.lanes.snare) {
-    const accStep = (hash(seed, "snare-acc") % 4) * 4;
+  if (futuristFunk && state.lanes.clap) {
+    const accStep = (hash(seed, "clap-acc") % 4) * 4;
     ops.push({
       op: "SET_STEP",
-      laneId: "snare",
+      laneId: "clap",
       stepIndex: accStep,
       on: true,
       velocity: 0.9,

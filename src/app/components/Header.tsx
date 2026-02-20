@@ -17,7 +17,7 @@ export const Header: React.FC = () => {
           <div className="w-3 h-3 rounded-full border-2 border-[#E66000]" />
         </div>
         <div className="flex flex-col">
-          <span className="text-[18px] font-[Inter] font-bold uppercase tracking-tight text-[#181818]/90">
+          <span className="text-[18px] font-sans font-bold uppercase tracking-tight text-[#181818]/90">
             PERCU <span className="text-[#E66000]">PRO</span>
           </span>
           <span className="text-[8px] font-mono tracking-[0.3em] text-[#121212]/30 font-bold -mt-0.5 uppercase">

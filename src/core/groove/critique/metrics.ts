@@ -7,10 +7,10 @@ import type { TrackId } from "../../types";
 import type { PatternState, LaneState, StepData } from "../../patternTypes";
 import { STEPS_PER_BAR } from "../../patternTypes";
 
-const TRACK_IDS: TrackId[] = ["kick", "snare", "hhc", "hho", "perc1", "perc2", "rim", "clap"];
+const TRACK_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
 const STRONG_VELOCITY = 0.65;
-const ANCHOR_LANES: Set<TrackId> = new Set(["kick", "hhc"]);
-const HAT_LANES: Set<TrackId> = new Set(["hhc", "hho"]);
+const ANCHOR_LANES: Set<TrackId> = new Set(["kick", "noise"]);
+const HAT_LANES: Set<TrackId> = new Set(["noise"]);
 
 export interface DensityDetail {
   laneId: TrackId;
