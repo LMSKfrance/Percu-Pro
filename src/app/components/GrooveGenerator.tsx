@@ -1,14 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, createContext, useContext } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Sparkles, 
-  Dices, 
-  Settings, 
+  Drum,
   ChevronDown, 
   Layers, 
   Zap,
-  RefreshCcw,
-  Gauge
+  RefreshCcw
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { usePercuProV1Store } from "../../core/store";
@@ -25,7 +23,6 @@ const GROOVE_PRESETS = [
 ];
 
 const DEFAULT_SEED = 42;
-const MIN_SEED = 0;
 const MAX_SEED = 999999;
 
 /** Map preset id to generator influence (AfroFunk/AfroDisco when implied) */
@@ -53,7 +50,30 @@ function hashStr(s: string): number {
   return h % 0x7fffffff;
 }
 
-export const GrooveGenerator: React.FC = () => {
+type GrooveGeneratorContextValue = {
+  seed: number;
+  setSeed: (v: number | ((prev: number) => number)) => void;
+  handleGenerate: () => void;
+  isGenerating: boolean;
+  activePreset: string;
+  setActivePreset: (v: string) => void;
+  complexity: number;
+  setComplexity: (v: number) => void;
+  intensity: number;
+  setIntensity: (v: number) => void;
+};
+
+const GrooveGeneratorContext = createContext<GrooveGeneratorContextValue | null>(null);
+
+export function useGrooveGenerator(): GrooveGeneratorContextValue {
+  const ctx = useContext(GrooveGeneratorContext);
+  if (!ctx) throw new Error("useGrooveGenerator must be used within GrooveGeneratorProvider");
+  return ctx;
+}
+
+const VARIANTS = ["Detroit", "Tbilisi", "Berlin"];
+
+export function GrooveGeneratorProvider({ children }: { children: React.ReactNode }) {
   const { state, actions } = usePercuProV1Store();
   const [activePreset, setActivePreset] = useState("swing");
   const [complexity, setComplexity] = useState(45);
@@ -64,7 +84,7 @@ export const GrooveGenerator: React.FC = () => {
   const runGenerate = (seedToUse: number) => {
     const bpm = state.transport.bpm;
     const currentPattern = state.pattern ?? createInitialPatternState(bpm, seedToUse);
-    const seed = seedToUse + hashStr(`${activePreset}-${complexity}-${intensity}`);
+    const effectiveSeed = seedToUse + hashStr(`${activePreset}-${complexity}-${intensity}`);
 
     const density = 0.15 + (complexity / 100) * 0.7;
     const swingPct = PRESET_TO_SWING[activePreset] ?? 55;
@@ -74,7 +94,7 @@ export const GrooveGenerator: React.FC = () => {
     const mode = activePreset === "ghost" || activePreset === "chaos" ? "FUTURIST_FUNK" : "";
 
     const input: GeneratorInput = {
-      seed,
+      seed: effectiveSeed,
       density,
       swingPct,
       tempoBpm: bpm,
@@ -87,9 +107,14 @@ export const GrooveGenerator: React.FC = () => {
 
     const { replacePatchOps, critique, opCount, top3 } = generateGroove(input, currentPattern);
     actions.applyPatternPatch(replacePatchOps);
-    actions.setGrooveLastCritique(critique);
-    actions.setGrooveLastAppliedCount(opCount);
-    actions.setGrooveTop3(top3);
+    const act = actions as typeof actions & {
+      setGrooveLastCritique?: (v: { reason: string; message: string }[]) => void;
+      setGrooveLastAppliedCount?: (v: number) => void;
+      setGrooveTop3?: (v: unknown) => void;
+    };
+    act.setGrooveLastCritique?.(critique);
+    act.setGrooveLastAppliedCount?.(opCount);
+    act.setGrooveTop3?.(top3);
   };
 
   const handleGenerate = () => {
@@ -104,31 +129,97 @@ export const GrooveGenerator: React.FC = () => {
     }
   };
 
-  const handlePrevSeed = () => {
-    setSeed((s) => Math.max(MIN_SEED, s - 1));
-  };
-
-  const handleNextSeed = () => {
-    const nextSeed = Math.min(MAX_SEED, seed + 1);
-    setSeed(nextSeed);
-    setIsGenerating(true);
-    try {
-      runGenerate(nextSeed);
-    } catch (err) {
-      console.warn("[GrooveGenerator] pipeline error", err);
-    } finally {
-      setIsGenerating(false);
-    }
+  const value: GrooveGeneratorContextValue = {
+    seed,
+    setSeed,
+    handleGenerate,
+    isGenerating,
+    activePreset,
+    setActivePreset,
+    complexity,
+    setComplexity,
+    intensity,
+    setIntensity,
   };
 
   return (
-    <div className="w-full h-[80px] px-12 bg-[#F2F2EB] border-b border-[#121212]/05 flex items-center justify-between gap-12 relative overflow-hidden">
-      {/* Background Accent Gradient */}
+    <GrooveGeneratorContext.Provider value={value}>
+      {children}
+    </GrooveGeneratorContext.Provider>
+  );
+}
+
+/** Generate Groove button + Seed (no <>). For use in Header. */
+export const GrooveGeneratorHeaderBlock: React.FC = () => {
+  const { seed, handleGenerate, isGenerating } = useGrooveGenerator();
+  return (
+    <div className="flex items-center gap-4 justify-center shrink-0">
+      <button
+        onClick={handleGenerate}
+        disabled={isGenerating}
+        className={cn(
+          "h-11 px-6 rounded-[6px] flex items-center gap-3 transition-all duration-300 relative overflow-hidden group",
+          isGenerating ? "bg-[#181818] scale-95" : "bg-[#181818] hover:bg-[#2a2a2a] shadow-lg shadow-[#181818]/10"
+        )}
+      >
+        <AnimatePresence mode="wait">
+          {isGenerating ? (
+            <motion.div
+              key="loading"
+              initial={{ rotate: 0 }}
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 0.5, ease: "linear" }}
+            >
+              <RefreshCcw size={16} className="text-[#E66000]" />
+            </motion.div>
+          ) : (
+            <motion.div key="icon" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+              <Drum size={16} className="text-[#E66000]" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <span className="text-[12px] font-[Inter] font-bold text-white uppercase tracking-widest">
+          Generate Groove
+        </span>
+        <motion.div
+          className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
+          animate={{ left: isGenerating ? "100%" : "-100%" }}
+          transition={{ duration: 0.8 }}
+        />
+      </button>
+      <div className="h-8 w-px bg-[#121212]/08" aria-hidden />
+      <div className="flex flex-col items-center">
+        <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#121212]/20 mb-1">Seed</span>
+        <div className="flex items-center justify-center bg-[#121212]/03 border border-[#121212]/05 rounded-[4px] px-3 py-1.5 min-w-[3ch]">
+          <span className="text-[11px] font-mono font-medium text-[#121212]/80 tabular-nums">
+            {seed}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const GrooveGeneratorBar: React.FC = () => {
+  const { state, actions } = usePercuProV1Store();
+  const selectedVariant = state.ui.cityProfile;
+  const setSelectedVariant = (actions as unknown as { setCityProfile: (v: string) => void }).setCityProfile;
+  const {
+    activePreset,
+    setActivePreset,
+    complexity,
+    setComplexity,
+    intensity,
+    setIntensity,
+  } = useGrooveGenerator();
+
+  return (
+    <div className="w-full h-[80px] px-12 bg-[#F2F2EB] border-b border-[#121212]/05 grid grid-cols-[1fr_auto_1fr] items-center gap-8 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#E66000]/02 to-transparent pointer-events-none" />
 
-      {/* Left Section: Preset Selection */}
-      <div className="flex items-center gap-8 min-w-fit">
-        <div className="flex flex-col">
+      {/* Left Section: Presets + Parameters */}
+      <div className="flex items-end gap-8 min-w-0">
+        <div className="flex flex-col shrink-0 pb-0.5">
           <div className="flex items-center gap-2 text-[#121212]/20 mb-1">
             <Sparkles size={12} strokeWidth={2.5} />
             <span className="text-[9px] uppercase font-bold tracking-widest font-mono">Algorithm Presets</span>
@@ -147,8 +238,6 @@ export const GrooveGenerator: React.FC = () => {
                 </div>
                 <ChevronDown size={14} className="text-[#121212]/20" />
               </button>
-              
-              {/* Dropdown Menu (Hidden for demo, just visual) */}
               <div className="absolute top-full left-0 mt-1 w-full bg-[#181818] rounded-[4px] border border-white/10 shadow-xl opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all z-[100] p-1">
                 {GROOVE_PRESETS.map((p) => (
                   <button
@@ -167,126 +256,72 @@ export const GrooveGenerator: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Middle Section: Variabilities / Parameters */}
-      <div className="flex-1 flex items-center gap-12 max-w-[800px]">
-        {/* Complexity Parameter */}
-        <div className="flex-1 flex flex-col gap-2">
-          <div className="flex justify-between items-center text-[9px] font-mono font-bold uppercase tracking-widest">
-            <span className="text-[#121212]/20 flex items-center gap-1.5"><Layers size={10} /> Complexity</span>
-            <span className="text-[#E66000]">{complexity}%</span>
-          </div>
-          <div className="relative h-1.5 w-full bg-[#121212]/05 rounded-full overflow-hidden cursor-pointer group">
-            <motion.div 
-              className="absolute left-0 top-0 h-full bg-[#181818] rounded-full"
-              animate={{ width: `${complexity}%` }}
-            />
-            <input 
-              type="range" 
-              className="absolute inset-0 opacity-0 cursor-pointer"
-              value={complexity}
-              onChange={(e) => setComplexity(parseInt(e.target.value))}
-            />
-          </div>
-        </div>
-
-        {/* Intensity Parameter */}
-        <div className="flex-1 flex flex-col gap-2">
-          <div className="flex justify-between items-center text-[9px] font-mono font-bold uppercase tracking-widest">
-            <span className="text-[#121212]/20 flex items-center gap-1.5"><Zap size={10} /> Velocity Variation</span>
-            <span className="text-[#00D2FF]">{intensity}%</span>
-          </div>
-          <div className="relative h-1.5 w-full bg-[#121212]/05 rounded-full overflow-hidden cursor-pointer group">
-            <motion.div 
-              className="absolute left-0 top-0 h-full bg-[#181818] rounded-full"
-              animate={{ width: `${intensity}%` }}
-            />
-            <input 
-              type="range" 
-              className="absolute inset-0 opacity-0 cursor-pointer"
-              value={intensity}
-              onChange={(e) => setIntensity(parseInt(e.target.value))}
-            />
-          </div>
-        </div>
-
-        {/* Probability Map Visualization */}
-        <div className="w-[180px] h-10 flex items-end gap-[2px] px-2 bg-[#121212]/03 rounded-[4px] border border-[#121212]/05">
-          {[...Array(16)].map((_, i) => {
-            const h = i % 4 === 0 ? 80 : 30 + Math.random() * 40;
-            return (
+        <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-8 max-w-[420px] content-end">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between items-center text-[9px] font-mono font-bold uppercase tracking-widest h-4">
+              <span className="text-[#121212]/20 flex items-center gap-1.5"><Layers size={10} /> Complexity</span>
+              <span className="text-[#E66000]">{complexity}%</span>
+            </div>
+            <div className="relative h-2 w-full rounded-[2px] overflow-hidden cursor-pointer bg-[#121212]/12">
               <motion.div 
-                key={i}
-                animate={{ height: `${h}%` }}
-                className={cn(
-                  "flex-1 rounded-t-[1px]",
-                  i % 4 === 0 ? "bg-[#E66000]/40" : "bg-[#121212]/10"
-                )}
+                className="absolute left-0 top-0 h-full bg-[#181818] rounded-[2px]"
+                animate={{ width: `${complexity}%` }}
               />
-            );
-          })}
+              <input 
+                type="range" 
+                className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                value={complexity}
+                onChange={(e) => setComplexity(parseInt(e.target.value))}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between items-center text-[9px] font-mono font-bold uppercase tracking-widest h-4">
+              <span className="text-[#121212]/20 flex items-center gap-1.5"><Zap size={10} /> Velocity Variation</span>
+              <span className="text-[#00D2FF]">{intensity}%</span>
+            </div>
+            <div className="relative h-2 w-full rounded-[2px] overflow-hidden cursor-pointer bg-[#121212]/12">
+              <motion.div 
+                className="absolute left-0 top-0 h-full bg-[#181818] rounded-[2px]"
+                animate={{ width: `${intensity}%` }}
+              />
+              <input 
+                type="range" 
+                className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                value={intensity}
+                onChange={(e) => setIntensity(parseInt(e.target.value))}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Right Section: < | Generate | > */}
-      <div className="flex items-center gap-2 min-w-fit">
-        <div className="h-10 w-[1px] bg-[#121212]/05 mx-2" />
-        <button
-          type="button"
-          onClick={handlePrevSeed}
-          disabled={isGenerating}
-          className="h-11 w-11 rounded-full bg-[#121212]/05 border border-[#121212]/05 flex items-center justify-center hover:bg-[#121212]/10 transition-colors text-[#121212]/60 hover:text-[#121212]/90 disabled:opacity-50 disabled:pointer-events-none"
-          aria-label="Previous seed"
-        >
-          <span className="text-[16px] font-bold leading-none">&lt;</span>
-        </button>
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className={cn(
-            "h-11 px-6 rounded-full flex items-center gap-3 transition-all duration-300 relative overflow-hidden group",
-            isGenerating ? "bg-[#181818] scale-95" : "bg-[#181818] hover:bg-[#2a2a2a] shadow-lg shadow-[#181818]/10"
-          )}
-        >
-          <AnimatePresence mode="wait">
-            {isGenerating ? (
-              <motion.div
-                key="loading"
-                initial={{ rotate: 0 }}
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 0.5, ease: "linear" }}
-              >
-                <RefreshCcw size={16} className="text-[#E66000]" />
-              </motion.div>
-            ) : (
-              <motion.div key="icon" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                <Dices size={16} className="text-[#E66000]" />
-              </motion.div>
+      {/* Center: City (Detroit / Tbilisi / Berlin) */}
+      <div className="flex items-center bg-[#121212]/03 p-1 rounded-[6px] relative w-[320px] shadow-inner border border-[#121212]/05">
+        {VARIANTS.map((v) => (
+          <button
+            key={v}
+            onClick={() => setSelectedVariant(v)}
+            className={cn(
+              "flex-1 relative z-10 py-1.5 text-[10px] font-[Inter] font-bold uppercase tracking-[0.2em] transition-colors duration-400 rounded-[4px]",
+              selectedVariant === v ? "text-white" : "text-[#121212]/30 hover:text-[#121212]/60"
             )}
-          </AnimatePresence>
-          <span className="text-[12px] font-[Inter] font-bold text-white uppercase tracking-widest">
-            Generate Groove
-          </span>
-          <motion.div
-            className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
-            animate={{ left: isGenerating ? "100%" : "-100%" }}
-            transition={{ duration: 0.8 }}
-          />
-        </button>
-        <button
-          type="button"
-          onClick={handleNextSeed}
-          disabled={isGenerating}
-          className="h-11 w-11 rounded-full bg-[#121212]/05 border border-[#121212]/05 flex items-center justify-center hover:bg-[#121212]/10 transition-colors text-[#121212]/60 hover:text-[#121212]/90 disabled:opacity-50 disabled:pointer-events-none"
-          aria-label="Next seed and generate"
-        >
-          <span className="text-[16px] font-bold leading-none">&gt;</span>
-        </button>
-        <button className="w-11 h-11 rounded-full bg-[#121212]/03 border border-[#121212]/05 flex items-center justify-center hover:bg-[#121212]/06 transition-all group">
-          <Settings size={18} className="text-[#121212]/30 group-hover:text-[#121212]/60" />
-        </button>
+          >
+            {v}
+          </button>
+        ))}
+        <motion.div
+          className="absolute h-[calc(100%-8px)] rounded-[4px] bg-[#181818] shadow-[0_2px_4px_rgba(0,0,0,0.1)] top-1 left-1"
+          initial={false}
+          animate={{
+            x: VARIANTS.indexOf(selectedVariant) * (312 / 3),
+            width: 312 / 3 - 8,
+          }}
+          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+        />
       </div>
+
+      <div className="min-w-0" aria-hidden />
     </div>
   );
-};
+}

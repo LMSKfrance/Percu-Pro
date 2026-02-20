@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Header } from "./components/Header";
 import { MasterDockCollapsed, DOCK_HEIGHT } from "./components/MasterDockCollapsed";
-import { GrooveGenerator } from "./components/GrooveGenerator";
+import { GrooveGeneratorProvider, GrooveGeneratorBar } from "./components/GrooveGenerator";
 import { SequencerRow } from "./components/SequencerRow";
 import { SidebarAccordion } from "./components/SidebarAccordion";
 import { FXCard } from "./components/FXCard";
@@ -201,8 +201,11 @@ export default function App() {
       className="min-h-screen bg-[#F2F2EB] flex flex-col overflow-x-hidden selection:bg-[#E66000]/20"
       style={!masterExpanded ? { paddingBottom: DOCK_HEIGHT } : undefined}
     >
-      <Header />
-      <GrooveGenerator />
+      <GrooveGeneratorProvider>
+        <Header />
+        <GrooveGeneratorBar />
+
+      </GrooveGeneratorProvider>
 
       <main className="flex-1 flex overflow-hidden min-h-0">
         <section className="flex-1 min-w-[880px] flex flex-col overflow-y-auto scrollbar-hide border-r border-[#121212]/5">

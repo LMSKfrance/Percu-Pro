@@ -3,13 +3,11 @@ import { motion } from "motion/react";
 import { Cpu, Clock, Activity } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { usePercuProV1Store } from "../../core/store";
-
-const VARIANTS = ["Detroit", "Tbilisi", "Berlin"];
+import { GrooveGeneratorHeaderBlock } from "./GrooveGenerator";
 
 export const Header: React.FC = () => {
-  const { state, actions } = usePercuProV1Store();
-  const selectedVariant = state.ui.cityProfile;
-  const setSelectedVariant = actions.setCityProfile;
+  const { state } = usePercuProV1Store();
+  const bpm = state.transport.bpm;
 
   return (
     <header className="h-[80px] w-full px-12 flex items-center justify-between border-b border-[#121212]/05 bg-[#F2F2EB] sticky top-0 z-50">
@@ -28,31 +26,8 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Center: Segmented Control (Softer) */}
-      <div className="flex items-center bg-[#121212]/03 p-1 rounded-full relative w-[320px] shadow-inner border border-[#121212]/05">
-        {VARIANTS.map((v) => (
-          <button
-            key={v}
-            onClick={() => setSelectedVariant(v)}
-            className={cn(
-              "flex-1 relative z-10 py-1.5 text-[10px] font-[Inter] font-bold uppercase tracking-[0.2em] transition-colors duration-400",
-              selectedVariant === v ? "text-white" : "text-[#121212]/30 hover:text-[#121212]/60"
-            )}
-          >
-            {v}
-          </button>
-        ))}
-        {/* Sliding Pill */}
-        <motion.div
-          className="absolute h-[calc(100%-8px)] rounded-full bg-[#181818] shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
-          initial={false}
-          animate={{
-            x: VARIANTS.indexOf(selectedVariant) * (312 / 3),
-            width: 312 / 3,
-          }}
-          transition={{ type: "spring", stiffness: 350, damping: 30 }}
-        />
-      </div>
+      {/* Center: Generate Groove + Seed */}
+      <GrooveGeneratorHeaderBlock />
 
       {/* Right: Stats (Less contrast) */}
       <div className="flex items-center gap-10 font-mono">
@@ -79,7 +54,7 @@ export const Header: React.FC = () => {
             <span className="text-[9px] uppercase font-bold tracking-widest">MASTER_CLK</span>
           </div>
           <span className="text-[13px] font-bold text-[#121212]/80 flex items-center gap-1">
-            128.00 <span className="text-[9px] text-[#121212]/20">BPM</span>
+            {bpm.toFixed(2)} <span className="text-[9px] text-[#121212]/20">BPM</span>
           </span>
         </div>
 
