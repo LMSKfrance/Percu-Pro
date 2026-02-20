@@ -19,7 +19,7 @@ const initialBpm = 132;
 const initialSeed = 42;
 
 export const initialState: AppState = {
-  ui: { activeTrackId: "kick", expandedTrackId: "kick", activeEngine: "Percussion Engine", cityProfile: "Berlin" },
+  ui: { activeTrackId: "kick", expandedTrackId: null, activeEngine: "Percussion Engine", cityProfile: "Berlin" },
   transport: { bpm: initialBpm, isPlaying: false, isLooping: true },
   pattern: createInitialPatternState(initialBpm, initialSeed),
   groove: { top3: null, lastCritique: [], lastAppliedCount: 0 },

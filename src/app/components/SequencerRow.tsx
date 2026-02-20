@@ -71,8 +71,17 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
     }
   };
 
-  const handleRowClick = () => {
+  const handleBarClick = () => {
     onActivate?.();
+  };
+
+  const handleBarDoubleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onToggleExpand?.();
+  };
+
+  const handleChevronClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onToggleExpand?.();
   };
 
@@ -80,16 +89,21 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
     <div 
       className={cn(
         "flex flex-col border-b border-[#121212]/5 overflow-hidden transition-all duration-400 ease-in-out",
-        isExpanded ? "bg-[#121212]/[0.03] h-[220px]" : "bg-transparent h-[72px]",
-        isActive && "bg-[#121212]/[0.05] border-l-4 border-l-[#E66000]"
+        isExpanded ? "bg-[#121212]/[0.03] h-[280px]" : "bg-transparent h-[72px]",
+        isActive && "bg-[#E8E4DC] border-l-4 border-l-[#E66000]"
       )}
     >
-      {/* Main Row Bar */}
-      <div className="flex items-center gap-6 h-[72px] px-8 flex-none">
+      {/* Main Row Bar — single-click to select, double-click to expand/collapse */}
+      <div 
+        className="flex items-center gap-6 h-[72px] px-8 flex-none cursor-pointer" 
+        onClick={handleBarClick} 
+        onDoubleClick={handleBarDoubleClick}
+      >
         {/* Toggle & Label Section */}
         <div className="flex items-center gap-4 w-[240px] flex-none">
           <button 
-            onClick={() => setPower(!power)}
+            onClick={(e) => { e.stopPropagation(); setPower(!power); }}
+            onDoubleClick={(e) => e.stopPropagation()}
             className={cn(
               "w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-300",
               power 
@@ -100,7 +114,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
             <Power size={14} strokeWidth={3} color={power ? "white" : "currentColor"} />
           </button>
           
-          <div className="flex flex-col cursor-pointer group select-none" onClick={handleRowClick}>
+          <div className="flex flex-col flex-1 cursor-pointer group select-none min-w-0" onClick={handleBarClick}>
             <span className={cn(
               "text-[13px] font-bold font-[Inter] tracking-wide uppercase transition-colors duration-300",
               isActive ? "text-[#E66000]" : "text-[#121212]/80 group-hover:text-[#121212]"
@@ -111,20 +125,30 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
               <span className="text-[8px] font-mono text-[#121212]/30 font-bold tracking-widest uppercase">
                 PATCH_A{label.charCodeAt(0) % 10}
               </span>
-              <motion.div 
-                animate={{ rotate: isExpanded ? 90 : 0 }}
-                className="text-[#121212]/15 group-hover:text-[#121212]/30 transition-colors"
+              <button
+                type="button"
+                onClick={handleChevronClick}
+                className={cn(
+                  "p-1 rounded-[4px] transition-colors flex items-center justify-center",
+                  isActive ? "text-[#E66000] hover:bg-[#E66000]/10" : "text-[#121212]/60 hover:bg-[#121212]/08 hover:text-[#121212]/80"
+                )}
+                aria-label={isExpanded ? "Collapse" : "Expand"}
               >
-                <ChevronRight size={12} />
-              </motion.div>
+                <motion.div 
+                  animate={{ rotate: isExpanded ? 90 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronRight size={16} strokeWidth={2.5} />
+                </motion.div>
+              </button>
             </div>
           </div>
         </div>
 
         {/* Nudge controls (Softer) */}
         <div className="flex items-center gap-1 flex-none mr-4">
-          <button className="p-1.5 text-[#121212]/15 hover:text-[#E66000] transition-colors"><ChevronLeft size={16} /></button>
-          <button className="p-1.5 text-[#121212]/15 hover:text-[#E66000] transition-colors"><ChevronRight size={16} /></button>
+          <button type="button" className="p-1.5 text-[#121212]/15 hover:text-[#E66000] transition-colors"><ChevronLeft size={16} /></button>
+          <button type="button" className="p-1.5 text-[#121212]/15 hover:text-[#E66000] transition-colors"><ChevronRight size={16} /></button>
         </div>
 
         {/* 16-Step Grid */}
@@ -147,14 +171,14 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
         </div>
       </div>
 
-      {/* Expanded Content: Micro-timing */}
+      {/* Expanded Content: Micro-timing + Velocity (Ableton-style) */}
       <AnimatePresence>
         {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="flex-1 border-t border-white/40 px-8 py-6 flex items-start gap-12"
+            className="flex-1 border-t border-[#121212]/08 px-8 py-5 flex flex-col gap-6 min-h-0"
           >
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2 text-[#121212]/40">
@@ -164,18 +188,18 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
               <div className="flex gap-8">
                 <div className="flex flex-col gap-2">
                   <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">SWING</span>
-                  <div className="w-[160px] h-2 bg-[#121212]/10 rounded-full relative overflow-hidden">
+                  <div className="w-[160px] h-2 bg-[#121212]/12 rounded-[2px] relative overflow-hidden">
                     <motion.div 
-                      className="absolute left-0 top-0 h-full bg-[#E66000]/60"
+                      className="absolute left-0 top-0 h-full bg-[#E66000]/60 rounded-[2px]"
                       initial={{ width: "35%" }}
                     />
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">VELOCITY RANGE</span>
-                  <div className="w-[160px] h-2 bg-[#121212]/10 rounded-full relative overflow-hidden">
+                  <div className="w-[160px] h-2 bg-[#121212]/12 rounded-[2px] relative overflow-hidden">
                     <motion.div 
-                      className="absolute left-0 top-0 h-full bg-[#00D2FF]/60"
+                      className="absolute left-0 top-0 h-full bg-[#00D2FF]/60 rounded-[2px]"
                       initial={{ width: "65%" }}
                     />
                   </div>
@@ -183,23 +207,27 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-col gap-4">
+            {/* Velocity lane: same layout as step row so bars align 1:1 with steps (Ableton-style) */}
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
               <div className="flex items-center gap-2 text-[#121212]/40">
                 <Shuffle size={14} strokeWidth={2.5} />
-                <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Step Probabilities</span>
+                <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Velocity</span>
               </div>
-              <div className="flex gap-2">
-                {[...Array(16)].map((_, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1.5">
-                    <div className="w-1.5 h-12 bg-[#121212]/5 rounded-full relative overflow-hidden">
-                       <div 
-                         className="absolute bottom-0 left-0 w-full bg-[#121212]/15 rounded-full" 
-                         style={{ height: `${Math.random() * 100}%` }}
+              <div className="flex items-center gap-6 flex-1 min-w-0">
+                <div className="flex-none w-[340px]" aria-hidden />
+                <div className="flex flex-1 gap-1.5 min-w-[500px]">
+                  {[...Array(16)].map((_, i) => (
+                    <div key={i} className="flex-1 min-w-0 flex flex-col items-stretch gap-1">
+                      <div className="w-full h-[52px] bg-[#121212]/10 rounded-[2px] relative overflow-hidden flex items-end">
+                        <div 
+                          className="absolute bottom-0 left-0 right-0 bg-[#E66000]/70 rounded-[2px] transition-[height] duration-100"
+                          style={{ height: `${velocities[i] ?? 100}%` }}
                         />
+                      </div>
+                      <span className="text-[7px] font-mono font-bold text-[#121212]/20 tabular-nums text-center">{i + 1}</span>
                     </div>
-                    <span className="text-[7px] font-bold text-[#121212]/15">{i + 1}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </motion.div>
