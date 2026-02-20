@@ -283,7 +283,8 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-3 min-w-0 min-h-0">
-                  <div className="h-[132px] min-w-0 flex items-end gap-1.5">
+                  {/* Velocity bars: height reduced by 30% (132 → 92) */}
+                  <div className="h-[92px] min-w-0 flex items-end gap-1.5">
                     {[...Array(16)].map((_, i) => (
                       <div key={i} className="flex-1 min-w-0 h-full">
                         <div className="w-full h-full bg-[#121212]/18 rounded-[2px] relative overflow-hidden">
@@ -295,14 +296,15 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                       </div>
                     ))}
                   </div>
-                  <div className="h-[44px] min-w-0 flex items-end gap-1.5">
+                  {/* Pitch bars: same visual as velocity, different color (-12..12 → 0..100% fill) */}
+                  <div className="h-[92px] min-w-0 flex items-end gap-1.5">
                     {[...Array(16)].map((_, i) => {
                       const p = pitchSteps[i] ?? 0;
-                      const label = p === 0 ? "0" : p > 0 ? `+${p}` : `${p}`;
+                      const fillPercent = Math.max(4, Math.min(100, ((p + 12) / 24) * 100));
                       return (
                         <div key={i} className="flex-1 min-w-0 h-full">
                           <div
-                            className="w-full h-full bg-[#121212]/18 rounded-[2px] relative overflow-hidden flex items-center justify-center cursor-ns-resize select-none border border-transparent hover:border-[#121212]/15"
+                            className="w-full h-full bg-[#121212]/18 rounded-[2px] relative overflow-hidden cursor-ns-resize select-none border border-transparent hover:border-[#121212]/15"
                             onMouseDown={(e) => handlePitchBarMouseDown(i, e)}
                             onDoubleClick={(e) => { e.preventDefault(); handlePitchReset(i); }}
                             role="slider"
@@ -311,14 +313,9 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                             aria-valuemax={12}
                           >
                             <div
-                              className="absolute inset-0 rounded-[2px] transition-opacity"
-                              style={{
-                                background: p === 0 ? "transparent" : "rgba(0,210,255,0.25)",
-                              }}
+                              className="absolute bottom-0 left-0 right-0 bg-[#00D2FF] rounded-[2px] transition-[height] duration-100"
+                              style={{ height: `${fillPercent}%` }}
                             />
-                            <span className="text-[8px] font-mono font-bold text-[#121212]/70 tabular-nums relative z-10">
-                              {label}
-                            </span>
                           </div>
                         </div>
                       );
