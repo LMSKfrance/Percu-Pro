@@ -35,6 +35,7 @@ const DEFAULT_STEP: StepData = {
   probability: 1,
   microShiftMs: 0,
   accent: false,
+  pitch: 0,
 };
 
 function applyOne(
@@ -53,6 +54,7 @@ function applyOne(
       probability: op.probability !== undefined ? clampProb(op.probability) : step.probability,
       microShiftMs: op.microShiftMs !== undefined ? Math.max(-18, Math.min(18, op.microShiftMs)) : step.microShiftMs,
       accent: op.accent !== undefined ? op.accent : step.accent,
+      pitch: step.pitch ?? 0,
     };
     if (op.meta?.role !== undefined) lane.role = op.meta.role;
     return true;

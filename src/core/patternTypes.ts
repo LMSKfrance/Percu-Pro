@@ -22,6 +22,8 @@ export interface StepData {
   probability: number; // 0..1
   microShiftMs: number;
   accent: boolean;
+  /** Pitch in semitones, -24..+24 (0 = no transpose) */
+  pitch: number;
 }
 
 export interface LaneState {
@@ -43,8 +45,9 @@ export interface PatternState {
 }
 
 export type PatchOp =
-  | { op: "SET_STEP"; laneId: TrackId; stepIndex: number; on: boolean; velocity?: number; probability?: number; microShiftMs?: number; accent?: boolean; role?: LaneRole }
+  | { op: "SET_STEP"; laneId: TrackId; stepIndex: number; on: boolean; velocity?: number; probability?: number; microShiftMs?: number; accent?: boolean; pitch?: number; role?: LaneRole }
   | { op: "SET_VELOCITY"; laneId: TrackId; stepIndex: number; velocity: number }
+  | { op: "SET_PITCH"; laneId: TrackId; stepIndex: number; pitch: number }
   | { op: "CLEAR_STEP"; laneId: TrackId; stepIndex: number }
   | { op: "SHIFT_LANE"; laneId: TrackId; deltaSteps: number }
   | { op: "SET_LANE_START"; laneId: TrackId; playStartOffsetSteps: number }
@@ -100,12 +103,19 @@ export interface GeneratorOutput {
   candidates?: CandidateWithScore[];
 }
 
+const PITCH_MIN = -24;
+const PITCH_MAX = 24;
+function clampPitch(v: number): number {
+  return Math.max(PITCH_MIN, Math.min(PITCH_MAX, Math.round(v)));
+}
+
 const DEFAULT_STEP: StepData = {
   on: false,
   velocity: 0.8,
   probability: 1,
   microShiftMs: 0,
   accent: false,
+  pitch: 0,
 };
 
 const LANE_ROLES: Record<TrackId, LaneRole> = {
@@ -178,12 +188,17 @@ export function applyPatternPatch(state: PatternState, ops: PatchOp[]): PatternS
         probability: op.probability !== undefined ? clampProb(op.probability) : step.probability,
         microShiftMs: op.microShiftMs !== undefined ? op.microShiftMs : step.microShiftMs,
         accent: op.accent !== undefined ? op.accent : step.accent,
+        pitch: op.pitch !== undefined ? clampPitch(op.pitch) : (step.pitch ?? 0),
       };
       if (op.role !== undefined) lane.role = op.role;
     } else if (op.op === "SET_VELOCITY") {
       const lane = lanes[op.laneId];
       if (!lane || op.stepIndex < 0 || op.stepIndex >= lane.steps.length) continue;
       lane.steps[op.stepIndex].velocity = clampVelocity(op.velocity);
+    } else if (op.op === "SET_PITCH") {
+      const lane = lanes[op.laneId];
+      if (!lane || op.stepIndex < 0 || op.stepIndex >= lane.steps.length) continue;
+      lane.steps[op.stepIndex].pitch = clampPitch(op.pitch);
     } else if (op.op === "CLEAR_STEP") {
       const lane = lanes[op.laneId];
       if (!lane || op.stepIndex < 0 || op.stepIndex >= lane.steps.length) continue;

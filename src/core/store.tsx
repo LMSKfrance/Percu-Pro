@@ -42,6 +42,7 @@ type Action =
   | { type: "setStepOn"; payload: { laneId: TrackId; stepIndex: number; velocity?: number } }
   | { type: "clearStep"; payload: { laneId: TrackId; stepIndex: number } }
   | { type: "setStepAccent"; payload: { laneId: TrackId; stepIndex: number; accent: boolean } }
+  | { type: "setStepPitch"; payload: { laneId: TrackId; stepIndex: number; pitch: number } }
   | { type: "setGrooveTop3"; payload: GrooveCandidate[] | null }
   | { type: "setGrooveLastCritique"; payload: { reason: string; message: string }[] }
   | { type: "setGrooveLastAppliedCount"; payload: number };
@@ -117,7 +118,13 @@ export function reducer(state: AppState, action: Action): AppState {
         probability: step.probability,
         microShiftMs: step.microShiftMs,
         accent,
+        pitch: step.pitch,
       }];
+      return { ...state, pattern: applyPatternPatch(pattern, ops) };
+    }
+    case "setStepPitch": {
+      const pattern = state.pattern ?? createInitialPatternState(state.transport.bpm, initialSeed);
+      const ops: PatchOp[] = [{ op: "SET_PITCH", ...action.payload }];
       return { ...state, pattern: applyPatternPatch(pattern, ops) };
     }
     case "setGrooveTop3": {
@@ -157,6 +164,7 @@ type StoreValue = {
     setStepOn: (laneId: TrackId, stepIndex: number, velocity?: number) => void;
     clearStep: (laneId: TrackId, stepIndex: number) => void;
     setStepAccent: (laneId: TrackId, stepIndex: number, accent: boolean) => void;
+    setStepPitch: (laneId: TrackId, stepIndex: number, pitch: number) => void;
     fullRandomizePattern: (currentState: AppState, options?: { unsafe?: boolean }) => void;
     setGrooveTop3: (top3: GrooveCandidate[] | null) => void;
     setGrooveLastCritique: (critique: { reason: string; message: string }[]) => void;
@@ -193,6 +201,9 @@ export function PercuProStoreProvider({ children }: { children: React.ReactNode 
     }, []),
     setStepAccent: useCallback((laneId: TrackId, stepIndex: number, accent: boolean) => {
       dispatch({ type: "setStepAccent", payload: { laneId, stepIndex, accent } });
+    }, []),
+    setStepPitch: useCallback((laneId: TrackId, stepIndex: number, pitch: number) => {
+      dispatch({ type: "setStepPitch", payload: { laneId, stepIndex, pitch } });
     }, []),
     fullRandomizePattern: useCallback((currentState: AppState, options?: { unsafe?: boolean }) => {
       const pattern = currentState.pattern ?? createInitialPatternState(currentState.transport.bpm, initialSeed);

@@ -95,15 +95,17 @@ function triggerStep(
   _stepIndex: number,
   timeSec: number,
   velocity: number,
-  accent: boolean
+  accent: boolean,
+  pitchSemitones: number
 ): void {
   if (!ctx) return;
   const voice = laneVoices[laneId];
   const dest = laneGains[laneId];
   if (!voice || !dest) return;
-  const params =
-    laneId === "hiPerc" ? { freq: 400 } : laneId === "lowPerc" ? { freq: 280 } : laneId === "chord" ? { freq: 520 } : undefined;
-  voice(ctx, dest, timeSec, velocity, accent, params);
+  const params: Record<string, unknown> =
+    laneId === "hiPerc" ? { freq: 400 } : laneId === "lowPerc" ? { freq: 280 } : laneId === "chord" ? { freq: 520 } : {};
+  if (laneId === "bass") (params as Record<string, number>).pitch = pitchSemitones;
+  voice(ctx, dest, timeSec, velocity, accent, Object.keys(params).length ? params : undefined);
 }
 
 export function userGestureInit(): void {

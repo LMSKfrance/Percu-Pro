@@ -26,6 +26,7 @@ import * as audioEngine from "../core/audio/AudioEngine";
 const EMPTY_STEPS = Object.freeze(new Array(STEPS_PER_BAR).fill(false));
 const DEFAULT_VELS = Object.freeze(new Array(STEPS_PER_BAR).fill(100));
 const EMPTY_ACCENTS = Object.freeze(new Array(STEPS_PER_BAR).fill(false));
+const DEFAULT_PITCHES = Object.freeze(new Array(STEPS_PER_BAR).fill(0));
 
 const SEQUENCER_TRACKS: { id: TrackId; label: string }[] = [
   { id: "noise", label: "Noise (Hats)" },
@@ -243,6 +244,9 @@ export default function App() {
               const accents = lane?.steps?.length === STEPS_PER_BAR
                 ? lane.steps.map((s) => s.accent)
                 : [...EMPTY_ACCENTS];
+              const pitches = lane?.steps?.length === STEPS_PER_BAR
+                ? lane.steps.map((s) => s.pitch ?? 0)
+                : [...DEFAULT_PITCHES];
               return (
                 <SequencerRow
                   key={track.id}
@@ -257,8 +261,10 @@ export default function App() {
                   steps={steps}
                   velocities={velocities}
                   accents={accents}
+                  pitches={pitches}
                   currentStepIndex={currentStepIndex}
                   onVelocityChange={(i, v) => actions.setStepVelocity(track.id, i, Math.max(0.15, Math.min(1, v / 100)))}
+                  onPitchChange={(i, p) => actions.setStepPitch(track.id, i, p)}
                   onStepAdd={(i) => actions.setStepOn(track.id, i)}
                   onStepClear={(i) => actions.clearStep(track.id, i)}
                   onStepAccentToggle={(i) => actions.setStepAccent(track.id, i, !accents[i])}

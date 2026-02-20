@@ -4,6 +4,7 @@ import { StepButton } from "./StepButton";
 import { ChevronRight, ChevronLeft, ChevronDown, Power, Sliders, Shuffle } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { TrackId } from "../../core/types";
+import { quantizeToScale } from "../../core/scale";
 
 const DEFAULT_STEPS = new Array(16).fill(false);
 const DEFAULT_VELS = new Array(16).fill(100);
@@ -41,6 +42,9 @@ interface SequencerRowProps {
   onStepAdd?: (index: number) => void;
   onStepClear?: (index: number) => void;
   onStepAccentToggle?: (index: number) => void;
+  /** Per-step pitch in semitones (-24..+24). When provided with onPitchChange, pitch is controlled from store. */
+  pitches?: number[];
+  onPitchChange?: (index: number, pitch: number) => void;
 }
 
 export const SequencerRow: React.FC<SequencerRowProps> = ({
@@ -61,6 +65,8 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
   onStepAdd,
   onStepClear,
   onStepAccentToggle,
+  pitches: controlledPitches,
+  onPitchChange,
 }) => {
   const [localSteps, setLocalSteps] = useState<boolean[]>(DEFAULT_STEPS);
   const [localVelocities, setLocalVelocities] = useState<number[]>(DEFAULT_VELS);
@@ -72,6 +78,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
   const isControlled = controlledSteps != null && controlledVelocities != null;
   const activeSteps = isControlled ? controlledSteps : localSteps;
   const velocities = isControlled ? controlledVelocities : localVelocities;
+  const pitchStepsResolved = controlledPitches != null && onPitchChange != null ? controlledPitches : pitchSteps;
   const usePatchCallbacks = isControlled && onStepAdd != null && onStepClear != null;
 
   const toggleStep = (index: number) => {
@@ -107,27 +114,28 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
     onToggleExpand?.();
   };
 
+  const applyScaleQuantize = (p: number): number => {
+    if (scaleOn && !scaleSlave) return quantizeToScale(p, scaleKey);
+    return p;
+  };
+
   const handlePitchDelta = (index: number, delta: number) => {
-    setPitchSteps((prev) => {
-      const next = [...prev];
-      next[index] = clampPitch((prev[index] ?? 0) + delta);
-      return next;
-    });
+    const raw = clampPitch((pitchStepsResolved[index] ?? 0) + delta);
+    const value = clampPitch(applyScaleQuantize(raw));
+    if (onPitchChange) onPitchChange(index, value);
+    else setPitchSteps((prev) => { const next = [...prev]; next[index] = value; return next; });
   };
 
   const handlePitchReset = (index: number) => {
-    setPitchSteps((prev) => {
-      const next = [...prev];
-      next[index] = 0;
-      return next;
-    });
+    if (onPitchChange) onPitchChange(index, 0);
+    else setPitchSteps((prev) => { const next = [...prev]; next[index] = 0; return next; });
   };
 
   const pitchBarDragRef = React.useRef<{ index: number; startY: number; startPitch: number; didMove: boolean } | null>(null);
 
   const handlePitchBarMouseDown = (index: number, e: React.MouseEvent) => {
     e.preventDefault();
-    pitchBarDragRef.current = { index, startY: e.clientY, startPitch: pitchSteps[index] ?? 0, didMove: false };
+    pitchBarDragRef.current = { index, startY: e.clientY, startPitch: pitchStepsResolved[index] ?? 0, didMove: false };
     const onMove = (ev: MouseEvent) => {
       if (!pitchBarDragRef.current || pitchBarDragRef.current.index !== index) return;
       pitchBarDragRef.current.didMove = true;
@@ -135,9 +143,12 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
       const step = ev.shiftKey ? 1 : 2; // semitones per drag
       const delta = Math.round(deltaY / 8) * step;
       if (delta !== 0) {
-        handlePitchDelta(index, delta);
+        const raw = clampPitch((pitchBarDragRef.current.startPitch ?? 0) + delta);
+        const value = clampPitch(applyScaleQuantize(raw));
         pitchBarDragRef.current.startY = ev.clientY;
-        pitchBarDragRef.current.startPitch = clampPitch((pitchBarDragRef.current.startPitch ?? 0) + delta);
+        pitchBarDragRef.current.startPitch = value;
+        if (onPitchChange) onPitchChange(pitchBarDragRef.current.index, value);
+        else setPitchSteps((prev) => { const next = [...prev]; next[pitchBarDragRef.current!.index] = value; return next; });
       }
     };
     const onUp = () => {
@@ -353,7 +364,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                   {/* Pitch bars: -24..+24, note name at bottom (A, E, C#), semitone in center */}
                   <div className="h-[92px] min-w-0 flex items-end gap-1.5">
                     {[...Array(16)].map((_, i) => {
-                      const p = pitchSteps[i] ?? 0;
+                      const p = pitchStepsResolved[i] ?? 0;
                       const fillPercent = Math.max(4, Math.min(100, ((p - PITCH_MIN) / (PITCH_MAX - PITCH_MIN)) * 100));
                       const keyLabel = p === 0 ? "0" : p > 0 ? `+${p}` : `${p}`;
                       const noteName = semitoneToNote(p);

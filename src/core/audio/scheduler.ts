@@ -18,7 +18,8 @@ export type TriggerStepFn = (
   stepIndex: number,
   timeSec: number,
   velocity: number,
-  accent: boolean
+  accent: boolean,
+  pitchSemitones: number
 ) => void;
 
 export type GetAudioTime = () => number;
@@ -102,7 +103,7 @@ export function startScheduler(
         let t = stepTime + microShiftSec;
         if (isOddStep) t += swingDelaySec;
 
-        triggerStep(laneId, stepIndex, t, step.velocity ?? 0.8, step.accent ?? false);
+        triggerStep(laneId, stepIndex, t, step.velocity ?? 0.8, step.accent ?? false, step.pitch ?? 0);
       }
 
       if (typeof import.meta !== "undefined" && import.meta.env?.DEV && stepIndex % 8 === 0) {

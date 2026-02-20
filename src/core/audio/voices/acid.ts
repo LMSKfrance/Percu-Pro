@@ -1,13 +1,20 @@
 import type { VoiceTrigger } from "./types";
 
+/** Bass root C2 in Hz; pitch is applied as semitones relative to this. */
+const BASS_ROOT_HZ = 65.41;
+
 /**
  * Acid: saw/square osc + lowpass filter + env to cutoff + accent support.
+ * params.pitch: semitones -24..+24 (0 = C2); applied to oscillator frequency.
  */
-export const triggerAcid: VoiceTrigger = (ctx, dest, timeSec, velocity01, accentBool, _params) => {
+export const triggerAcid: VoiceTrigger = (ctx, dest, timeSec, velocity01, accentBool, params) => {
   const now = timeSec;
+  const pitchSemitones = (params?.pitch as number | undefined) ?? 0;
+  const freqHz = BASS_ROOT_HZ * Math.pow(2, pitchSemitones / 12);
+
   const osc = ctx.createOscillator();
   osc.type = "sawtooth";
-  osc.frequency.value = 110;
+  osc.frequency.value = freqHz;
 
   const lp = ctx.createBiquadFilter();
   lp.type = "lowpass";
