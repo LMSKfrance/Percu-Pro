@@ -13,74 +13,6 @@ function clampPitch(v: number): number {
   return Math.max(-12, Math.min(12, Math.round(v)));
 }
 
-const PITCH_MIN = -12;
-const PITCH_MAX = 12;
-
-interface PitchDialColumnProps {
-  index: number;
-  velocity: number;
-  pitch: number;
-  onPitchDelta: (delta: number) => void;
-  onPitchReset: () => void;
-}
-
-function PitchDialColumn({ index, velocity, pitch, onPitchDelta, onPitchReset }: PitchDialColumnProps) {
-  const startYRef = React.useRef(0);
-  const startPitchRef = React.useRef(0);
-
-  const handleDialMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    startYRef.current = e.clientY;
-    startPitchRef.current = pitch;
-    const onMove = (ev: MouseEvent) => {
-      const deltaY = startYRef.current - ev.clientY;
-      const fine = ev.shiftKey;
-      const step = fine ? 0.05 : 0.2;
-      const delta = deltaY * step;
-      onPitchDelta(delta);
-      startYRef.current = ev.clientY;
-      startPitchRef.current = clampPitch(startPitchRef.current + delta);
-    };
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  };
-
-  const rotation = ((pitch - PITCH_MIN) / (PITCH_MAX - PITCH_MIN)) * 270 - 135;
-
-  return (
-    <div className="flex-1 min-w-0 flex flex-col items-stretch gap-0.5 min-h-0">
-      <div className="w-full h-[96px] bg-[#121212]/18 rounded-[2px] relative overflow-hidden flex-shrink-0">
-        <div
-          className="absolute bottom-0 left-0 right-0 bg-[#E66000] rounded-[2px] transition-[height] duration-100"
-          style={{ height: `${Math.max(4, velocity)}%` }}
-        />
-      </div>
-      <span className="text-[7px] font-mono font-bold text-[#121212]/30 tabular-nums text-center flex-none">{index + 1}</span>
-      <div
-        className="relative flex-none w-5 h-5 rounded-full border border-[#121212]/25 bg-[#121212]/08 flex items-center justify-center cursor-ns-resize select-none mx-auto"
-        onMouseDown={handleDialMouseDown}
-        onDoubleClick={(e) => { e.preventDefault(); onPitchReset(); }}
-        role="slider"
-        aria-valuenow={pitch}
-        aria-valuemin={PITCH_MIN}
-        aria-valuemax={PITCH_MAX}
-      >
-        <div
-          className="absolute left-1/2 top-1/2 w-[1.5px] h-[5px] bg-[#121212] rounded-full origin-bottom"
-          style={{
-            transform: `translate(-50%, -100%) rotate(${rotation}deg)`,
-            opacity: pitch !== 0 ? 0.6 : 0.35,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
 interface SequencerRowProps {
   trackId?: TrackId;
   label: string;
@@ -163,7 +95,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
     onToggleExpand?.();
   };
 
-  const handlePitchChange = (index: number, delta: number) => {
+  const handlePitchDelta = (index: number, delta: number) => {
     setPitchSteps((prev) => {
       const next = [...prev];
       next[index] = clampPitch((prev[index] ?? 0) + delta);
@@ -177,6 +109,35 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
       next[index] = 0;
       return next;
     });
+  };
+
+  const pitchBarDragRef = React.useRef<{ index: number; startY: number; startPitch: number; didMove: boolean } | null>(null);
+
+  const handlePitchBarMouseDown = (index: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    pitchBarDragRef.current = { index, startY: e.clientY, startPitch: pitchSteps[index] ?? 0, didMove: false };
+    const onMove = (ev: MouseEvent) => {
+      if (!pitchBarDragRef.current || pitchBarDragRef.current.index !== index) return;
+      pitchBarDragRef.current.didMove = true;
+      const deltaY = pitchBarDragRef.current.startY - ev.clientY;
+      const step = ev.shiftKey ? 1 : 2;
+      const delta = Math.round(deltaY / 8) * step;
+      if (delta !== 0) {
+        handlePitchDelta(index, delta);
+        pitchBarDragRef.current.startY = ev.clientY;
+        pitchBarDragRef.current.startPitch = clampPitch((pitchBarDragRef.current.startPitch ?? 0) + delta);
+      }
+    };
+    const onUp = () => {
+      const hadMovement = pitchBarDragRef.current?.didMove ?? false;
+      const idx = pitchBarDragRef.current?.index ?? index;
+      pitchBarDragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      if (!hadMovement) handlePitchDelta(idx, 1);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   return (
@@ -270,64 +231,104 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
         </div>
       </div>
 
-      {/* Expanded Content: Micro-timing + Velocity (Ableton-style) */}
+      {/* Expanded Content: same horizontal layout as main row so velocity/pitch bars align with steps */}
       <AnimatePresence>
         {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="flex-1 border-t border-[#121212]/08 px-8 py-3 flex flex-col gap-4 min-h-0 overflow-hidden"
+            className="flex-1 border-t border-[#121212]/08 px-8 py-3 overflow-hidden"
           >
-            <div className="flex flex-col gap-3 flex-none">
-              <div className="flex items-center gap-2 text-[#121212]/40">
-                <Sliders size={14} strokeWidth={2.5} />
-                <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Micro-timing</span>
-              </div>
-              <div className="flex gap-8">
-                <div className="flex flex-col gap-2">
-                  <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">SWING</span>
-                  <div className="w-[160px] h-2 bg-[#121212]/12 rounded-[2px] relative overflow-hidden">
-                    <motion.div 
-                      className="absolute left-0 top-0 h-full bg-[#E66000]/60 rounded-[2px]"
-                      initial={{ width: "35%" }}
-                    />
+            <div className="flex gap-6 items-start min-h-0">
+              {/* Left: micro-timing (same width as row label so bar strip aligns with steps) */}
+              <div className="w-[240px] flex-none flex flex-col gap-3 min-h-0">
+                <div className="flex items-center gap-2 text-[#121212]/40">
+                  <Sliders size={14} strokeWidth={2.5} />
+                  <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Micro-timing</span>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">SWING</span>
+                    <div className="w-[96px] h-1.5 bg-[#121212]/12 rounded-[2px] relative overflow-hidden">
+                      <motion.div 
+                        className="absolute left-0 top-0 h-full bg-[#E66000]/60 rounded-[2px]"
+                        initial={{ width: "35%" }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">VEL RANGE</span>
+                    <div className="w-[96px] h-1.5 bg-[#121212]/12 rounded-[2px] relative overflow-hidden">
+                      <motion.div 
+                        className="absolute left-0 top-0 h-full bg-[#00D2FF]/60 rounded-[2px]"
+                        initial={{ width: "65%" }}
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">VELOCITY RANGE</span>
-                  <div className="w-[160px] h-2 bg-[#121212]/12 rounded-[2px] relative overflow-hidden">
-                    <motion.div 
-                      className="absolute left-0 top-0 h-full bg-[#00D2FF]/60 rounded-[2px]"
-                      initial={{ width: "65%" }}
-                    />
-                  </div>
-                </div>
               </div>
-            </div>
 
-            {/* Velocity + Pitch: ~50% of expanded content; taller bars + per-step pitch dials */}
-            <div className="flex flex-col gap-1.5 flex-1 min-h-[98px] min-w-0 overflow-hidden">
-              <div className="flex items-center gap-4 flex-none">
-                <div className="flex items-center gap-2 text-[#121212]/50">
-                  <Shuffle size={14} strokeWidth={2.5} />
-                  <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Velocity</span>
+              {/* Spacer: same width as nudge so bar strip aligns with step grid */}
+              <div className="w-[76px] flex-none flex-shrink-0" aria-hidden />
+
+              {/* Bar strip: same flex + gap-1.5 + min-w as step grid for perfect alignment */}
+              <div className="flex-1 min-w-[500px] flex flex-col gap-3 min-h-0">
+                <div className="flex items-center justify-between flex-none">
+                  <div className="flex items-center gap-2 text-[#121212]/50">
+                    <Shuffle size={14} strokeWidth={2.5} />
+                    <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Velocity</span>
+                  </div>
+                  <span className="text-[8px] font-mono text-[#121212]/25 tracking-wider uppercase">Pitch</span>
                 </div>
-                <span className="text-[8px] font-mono text-[#121212]/25 tracking-wider uppercase">Pitch</span>
-              </div>
-              <div className="flex items-start gap-6 flex-none min-w-0">
-                <div className="flex-none w-[340px]" aria-hidden />
-                <div className="flex flex-1 gap-1.5 min-w-[500px] min-h-[120px]">
-                  {[...Array(16)].map((_, i) => (
-                    <PitchDialColumn
-                      key={i}
-                      index={i}
-                      velocity={velocities[i] ?? 100}
-                      pitch={pitchSteps[i] ?? 0}
-                      onPitchDelta={(delta) => handlePitchChange(i, delta)}
-                      onPitchReset={() => handlePitchReset(i)}
-                    />
-                  ))}
+
+                <div className="flex flex-col gap-3 min-w-0 min-h-0">
+                  <div className="h-[132px] min-w-0 flex items-end gap-1.5">
+                    {[...Array(16)].map((_, i) => (
+                      <div key={i} className="flex-1 min-w-0 h-full">
+                        <div className="w-full h-full bg-[#121212]/18 rounded-[2px] relative overflow-hidden">
+                          <div
+                            className="absolute bottom-0 left-0 right-0 bg-[#E66000] rounded-[2px] transition-[height] duration-100"
+                            style={{ height: `${Math.max(4, velocities[i] ?? 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="h-[44px] min-w-0 flex items-end gap-1.5">
+                    {[...Array(16)].map((_, i) => {
+                      const p = pitchSteps[i] ?? 0;
+                      const label = p === 0 ? "0" : p > 0 ? `+${p}` : `${p}`;
+                      return (
+                        <div key={i} className="flex-1 min-w-0 h-full">
+                          <div
+                            className="w-full h-full bg-[#121212]/18 rounded-[2px] relative overflow-hidden flex items-center justify-center cursor-ns-resize select-none border border-transparent hover:border-[#121212]/15"
+                            onMouseDown={(e) => handlePitchBarMouseDown(i, e)}
+                            onDoubleClick={(e) => { e.preventDefault(); handlePitchReset(i); }}
+                            role="slider"
+                            aria-valuenow={p}
+                            aria-valuemin={-12}
+                            aria-valuemax={12}
+                          >
+                            <div
+                              className="absolute inset-0 rounded-[2px] transition-opacity"
+                              style={{
+                                background: p === 0 ? "transparent" : "rgba(0,210,255,0.25)",
+                              }}
+                            />
+                            <span className="text-[8px] font-mono font-bold text-[#121212]/70 tabular-nums relative z-10">
+                              {label}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-1.5 min-w-0">
+                    {[...Array(16)].map((_, i) => (
+                      <span key={i} className="flex-1 min-w-0 text-[7px] font-mono font-bold text-[#121212]/30 tabular-nums text-center">{i + 1}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
