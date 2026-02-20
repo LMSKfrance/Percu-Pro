@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { StepButton } from "./StepButton";
-import { ChevronRight, ChevronLeft, Power, Sliders, Shuffle } from "lucide-react";
+import { ChevronRight, ChevronLeft, ChevronDown, Power, Sliders, Shuffle } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { TrackId } from "../../core/types";
 
@@ -9,8 +9,17 @@ const DEFAULT_STEPS = new Array(16).fill(false);
 const DEFAULT_VELS = new Array(16).fill(100);
 const DEFAULT_PITCH_STEPS = new Array(16).fill(0);
 
+const PITCH_MIN = -24;
+const PITCH_MAX = 24;
+
 function clampPitch(v: number): number {
-  return Math.max(-12, Math.min(12, Math.round(v)));
+  return Math.max(PITCH_MIN, Math.min(PITCH_MAX, Math.round(v)));
+}
+
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+function semitoneToNote(p: number): string {
+  const i = ((p % 12) + 12) % 12;
+  return NOTE_NAMES[i];
 }
 
 interface SequencerRowProps {
@@ -56,6 +65,9 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
   const [localSteps, setLocalSteps] = useState<boolean[]>(DEFAULT_STEPS);
   const [localVelocities, setLocalVelocities] = useState<number[]>(DEFAULT_VELS);
   const [pitchSteps, setPitchSteps] = useState<number[]>(DEFAULT_PITCH_STEPS);
+  const [scaleKey, setScaleKey] = useState<string>("Chromatic");
+  const [scaleOn, setScaleOn] = useState<boolean>(false);
+  const [scaleSlave, setScaleSlave] = useState<boolean>(true);
 
   const isControlled = controlledSteps != null && controlledVelocities != null;
   const activeSteps = isControlled ? controlledSteps : localSteps;
@@ -120,7 +132,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
       if (!pitchBarDragRef.current || pitchBarDragRef.current.index !== index) return;
       pitchBarDragRef.current.didMove = true;
       const deltaY = pitchBarDragRef.current.startY - ev.clientY;
-      const step = ev.shiftKey ? 1 : 2;
+      const step = ev.shiftKey ? 1 : 2; // semitones per drag
       const delta = Math.round(deltaY / 8) * step;
       if (delta !== 0) {
         handlePitchDelta(index, delta);
@@ -241,19 +253,19 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
             className="flex-1 border-t border-[#121212]/08 px-8 py-3 overflow-hidden"
           >
             <div className="flex gap-6 items-start min-h-0">
-              {/* Left: micro-timing (same width as row label so bar strip aligns with steps) */}
+              {/* Left: Micro Timing (swing 0 = 50%, vel range) */}
               <div className="w-[240px] flex-none flex flex-col gap-3 min-h-0">
                 <div className="flex items-center gap-2 text-[#121212]/40">
                   <Sliders size={14} strokeWidth={2.5} />
-                  <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Micro-timing</span>
+                  <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Micro Timing</span>
                 </div>
                 <div className="flex gap-4">
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">SWING</span>
+                    <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">0</span>
                     <div className="w-[96px] h-1.5 bg-[#121212]/12 rounded-[2px] relative overflow-hidden">
                       <motion.div 
                         className="absolute left-0 top-0 h-full bg-[#E66000]/60 rounded-[2px]"
-                        initial={{ width: "35%" }}
+                        initial={{ width: "50%" }}
                       />
                     </div>
                   </div>
@@ -261,7 +273,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                     <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">VEL RANGE</span>
                     <div className="w-[96px] h-1.5 bg-[#121212]/12 rounded-[2px] relative overflow-hidden">
                       <motion.div 
-                        className="absolute left-0 top-0 h-full bg-[#00D2FF]/60 rounded-[2px]"
+                        className="absolute left-0 top-0 h-full bg-[#A855F7]/60 rounded-[2px]"
                         initial={{ width: "65%" }}
                       />
                     </div>
@@ -274,10 +286,52 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
 
               {/* Bar strip: same flex + gap-1.5 + min-w as step grid for perfect alignment */}
               <div className="flex-1 min-w-[500px] flex flex-col gap-3 min-h-0">
-                <div className="flex items-center justify-between flex-none">
+                <div className="flex items-center justify-between flex-none flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-[#121212]/50">
                     <Shuffle size={14} strokeWidth={2.5} />
                     <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Velocity</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="relative flex items-center">
+                      <select
+                        value={scaleKey}
+                        onChange={(e) => setScaleKey(e.target.value)}
+                        disabled={scaleSlave}
+                        className={cn(
+                          "appearance-none bg-[#121212]/08 border border-[#121212]/12 rounded-[4px] pl-2 pr-6 py-1.5 text-[9px] font-mono font-bold tracking-wider focus:outline-none focus:ring-1 focus:ring-[#E66000]/40",
+                          scaleSlave ? "cursor-not-allowed opacity-50 text-[#121212]/50" : "cursor-pointer text-[#121212]/80"
+                        )}
+                      >
+                        <option value="Chromatic">Chromatic</option>
+                        <option value="Major">Major</option>
+                        <option value="Minor">Minor</option>
+                        <option value="Dorian">Dorian</option>
+                        <option value="Phrygian">Phrygian</option>
+                        <option value="Lydian">Lydian</option>
+                        <option value="Mixolydian">Mixolydian</option>
+                        <option value="Pentatonic">Pentatonic</option>
+                      </select>
+                      <ChevronDown size={12} className="absolute right-1.5 text-[#121212]/40 pointer-events-none" />
+                    </div>
+                    <label className={cn("flex items-center gap-1.5", scaleSlave ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
+                      <input
+                        type="checkbox"
+                        checked={scaleOn}
+                        onChange={(e) => setScaleOn(e.target.checked)}
+                        disabled={scaleSlave}
+                        className="w-3.5 h-3.5 rounded border border-[#121212]/25 accent-[#E66000]"
+                      />
+                      <span className="text-[8px] font-mono font-bold text-[#121212]/50 tracking-wider uppercase">Scale</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={scaleSlave}
+                        onChange={(e) => setScaleSlave(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded border border-[#121212]/25 accent-[#00D2FF]"
+                      />
+                      <span className="text-[8px] font-mono font-bold text-[#121212]/50 tracking-wider uppercase">Slave</span>
+                    </label>
                   </div>
                   <span className="text-[8px] font-mono text-[#121212]/25 tracking-wider uppercase">Pitch</span>
                 </div>
@@ -296,26 +350,34 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                       </div>
                     ))}
                   </div>
-                  {/* Pitch bars: same visual as velocity, different color (-12..12 → 0..100% fill) */}
+                  {/* Pitch bars: -24..+24, note name at bottom (A, E, C#), semitone in center */}
                   <div className="h-[92px] min-w-0 flex items-end gap-1.5">
                     {[...Array(16)].map((_, i) => {
                       const p = pitchSteps[i] ?? 0;
-                      const fillPercent = Math.max(4, Math.min(100, ((p + 12) / 24) * 100));
+                      const fillPercent = Math.max(4, Math.min(100, ((p - PITCH_MIN) / (PITCH_MAX - PITCH_MIN)) * 100));
+                      const keyLabel = p === 0 ? "0" : p > 0 ? `+${p}` : `${p}`;
+                      const noteName = semitoneToNote(p);
                       return (
-                        <div key={i} className="flex-1 min-w-0 h-full">
+                        <div key={i} className="flex-1 min-w-0 h-full flex flex-col">
                           <div
-                            className="w-full h-full bg-[#121212]/18 rounded-[2px] relative overflow-hidden cursor-ns-resize select-none border border-transparent hover:border-[#121212]/15"
+                            className="w-full flex-1 min-h-0 bg-[#121212]/18 rounded-[2px] relative overflow-hidden cursor-ns-resize select-none border border-transparent hover:border-[#121212]/15 flex flex-col items-center justify-center"
                             onMouseDown={(e) => handlePitchBarMouseDown(i, e)}
                             onDoubleClick={(e) => { e.preventDefault(); handlePitchReset(i); }}
                             role="slider"
                             aria-valuenow={p}
-                            aria-valuemin={-12}
-                            aria-valuemax={12}
+                            aria-valuemin={PITCH_MIN}
+                            aria-valuemax={PITCH_MAX}
                           >
                             <div
                               className="absolute bottom-0 left-0 right-0 bg-[#00D2FF] rounded-[2px] transition-[height] duration-100"
                               style={{ height: `${fillPercent}%` }}
                             />
+                            <span className="text-[8px] font-mono font-bold text-[#121212]/70 tabular-nums relative z-10 pointer-events-none">
+                              {keyLabel}
+                            </span>
+                            <span className="absolute bottom-0.5 left-0 right-0 text-center text-[7px] font-mono font-bold text-[#121212]/60 pointer-events-none z-10">
+                              {noteName}
+                            </span>
                           </div>
                         </div>
                       );
