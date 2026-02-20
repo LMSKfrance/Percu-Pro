@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn, clamp } from "../../lib/utils";
 
-const SINGLE_CLICK_DELAY_MS = 220;
-
 export interface StepButtonProps {
   active?: boolean;
   /** When true, lane is muted: show active steps as grey (triggers stay visible, no sound). */
@@ -17,9 +15,9 @@ export interface StepButtonProps {
   onVelocityChange: (val: number) => void;
   /** Single click when step is OFF: add step (patch op). */
   onAdd?: () => void;
-  /** Double click when step is ON: clear step (patch op). */
+  /** Single click when step is ON: clear step (patch op). */
   onClear?: () => void;
-  /** Single click when step is ON: toggle accent (patch op). */
+  /** Single click when step is ON: toggle accent (patch op). Unused when one-click add/remove is used. */
   onAccentToggle?: () => void;
 }
 
@@ -41,35 +39,23 @@ export const StepButton: React.FC<StepButtonProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
   const [initialVelocity, setInitialVelocity] = useState(velocity);
-  const singleClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didDragRef = useRef(false);
 
+  /** Single click: add step (if off) or remove step (if on). Hold + drag keeps velocity editing only. */
   const handleClick = useCallback(() => {
     if (isDragging) return;
-    if (singleClickTimerRef.current) clearTimeout(singleClickTimerRef.current);
-    singleClickTimerRef.current = setTimeout(() => {
-      singleClickTimerRef.current = null;
-      if (didDragRef.current) {
-        didDragRef.current = false;
-        return;
-      }
-      const usePatch = onAdd != null || onAccentToggle != null;
-      if (usePatch) {
-        if (active) onAccentToggle?.();
-        else onAdd?.();
-      } else {
-        onClick?.();
-      }
-    }, SINGLE_CLICK_DELAY_MS);
-  }, [active, isDragging, onAdd, onAccentToggle, onClick]);
-
-  const handleDoubleClick = useCallback(() => {
-    if (singleClickTimerRef.current) {
-      clearTimeout(singleClickTimerRef.current);
-      singleClickTimerRef.current = null;
+    if (didDragRef.current) {
+      didDragRef.current = false;
+      return;
     }
-    if (active) onClear?.();
-  }, [active, onClear]);
+    const usePatch = onAdd != null || onClear != null;
+    if (usePatch) {
+      if (active) onClear?.();
+      else onAdd?.();
+    } else {
+      onClick?.();
+    }
+  }, [active, isDragging, onAdd, onClear, onClick]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -114,9 +100,9 @@ export const StepButton: React.FC<StepButtonProps> = ({
       handleClick();
     } else if (e.key === "Backspace" || e.key === "Delete") {
       e.preventDefault();
-      handleDoubleClick();
+      if (active) onClear?.();
     }
-  }, [handleClick, handleDoubleClick]);
+  }, [active, handleClick, onClear]);
 
   const velocityOpacity = 0.3 + (velocity / 127) * 0.7;
   const glowIntensity = (velocity / 127) * 15;
@@ -130,7 +116,6 @@ export const StepButton: React.FC<StepButtonProps> = ({
         tabIndex={0}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
-        onDoubleClick={handleDoubleClick}
         onKeyDown={handleKeyDown}
         whileTap={{ scale: 0.96 }}
         className={cn(

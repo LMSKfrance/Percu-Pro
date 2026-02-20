@@ -124,7 +124,7 @@ describe("Percu-style regression snapshot", () => {
     const project = { ...defaultProject, seed: REGRESSION_SEED };
     const engine = generatePattern(project, defaultChannels, REGRESSION_CONTROLS, "all");
     const hash = hashEnginePatternState(engine);
-    expect(hash).toBe("7519b596");
+    expect(hash).toBe("aeb6d26a");
   });
 });
 

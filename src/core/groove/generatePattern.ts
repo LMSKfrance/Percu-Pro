@@ -285,21 +285,27 @@ function generateFx(rng: () => number, controls: GenerateControls, avatarSwing: 
 }
 
 // --- Percu-style lane generators (single bar RNG, derived params) ---
+// Dance music: kick = 4/4 spine with optional offbeat/doubles; clap = backbeat 4,12 with optional ghosts/syncopation.
 
 function generateKickPercuStyle(rng: Rng, d: PercuStyleDerived): StepState[] {
   const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+  // Anchor step 0 (always); 4, 8, 12 with high but not 100% so pattern can vary per seed
+  const downbeatProb = 0.88 + rng() * 0.12;
   for (let i = 0; i < STEPS; i++) {
-    const step = i % 4 === 0;
-    const prob = step ? 1 : d.effectiveDensity * 0.3;
-    const on = step || (d.kick4on4 < 0.5 && rng() < prob);
+    const isDownbeat = i % 4 === 0;
+    const alwaysOne = i === 0;
+    const onDownbeat = alwaysOne || (isDownbeat && rng() < downbeatProb);
+    const offbeatProb = d.effectiveDensity * 0.35 * (1 - d.kick4on4);
+    const onOffbeat = !isDownbeat && d.kick4on4 < 0.6 && rng() < offbeatProb;
+    const on = onDownbeat || onOffbeat;
     steps[i] = {
       ...emptyStep(),
       active: on,
-      velocity: on ? clamp(0.8 + rng() * 0.2, 0.15, 1) : 0.8,
-      probability: on ? 1 : prob,
+      velocity: on ? clamp(0.75 + rng() * 0.25, 0.15, 1) : 0.8,
+      probability: on ? clamp(0.85 + rng() * 0.15, 0.5, 1) : 0.5,
       microShiftMs: on ? Math.round((rng() - 0.5) * d.microtimingAmountMs) : 0,
       ratchetCount: on && rng() < d.ratchetProbability ? 1 + nextInt(rng, 2) : 0,
-      accent: on && i % 4 === 0 && rng() < 0.4,
+      accent: on && isDownbeat && rng() < 0.45,
     };
   }
   return steps;
@@ -424,16 +430,35 @@ function generateAcidPercuStyle(rng: Rng, d: PercuStyleDerived): StepState[] {
   return steps;
 }
 
-function generateClapMinimal(rng: Rng): StepState[] {
+/** Clap: dance backbeat (4, 12) with RNG so each generation varies; optional ghost/syncopated hits. */
+function generateClapPercuStyle(rng: Rng, d: PercuStyleDerived): StepState[] {
   const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
-  for (const i of [4, 12]) {
+  const backbeats = [4, 12];
+  for (const i of backbeats) {
+    const on = rng() < 0.92;
     steps[i] = {
       ...emptyStep(),
-      active: true,
-      velocity: 0.85,
-      probability: 1,
-      accent: rng() < 0.4,
+      active: on,
+      velocity: on ? clamp(0.78 + rng() * 0.2, 0.15, 1) : 0.8,
+      probability: on ? clamp(0.88 + rng() * 0.12, 0.5, 1) : 0.5,
+      microShiftMs: on ? Math.round((rng() - 0.5) * d.microtimingAmountMs * 0.6) : 0,
+      accent: on && rng() < 0.4,
+      flam: on && rng() < 0.25,
     };
+  }
+  const extraSteps = [2, 6, 8, 10, 14];
+  const extraProb = d.effectiveDensity * 0.25;
+  for (const i of extraSteps) {
+    if (rng() < extraProb) {
+      steps[i] = {
+        ...emptyStep(),
+        active: true,
+        velocity: clamp(0.4 + rng() * 0.35, 0.15, 1),
+        probability: clamp(0.6 + rng() * 0.3, 0.5, 1),
+        microShiftMs: Math.round((rng() - 0.5) * d.microtimingAmountMs),
+        flam: rng() < 0.35,
+      };
+    }
   }
   return steps;
 }
@@ -497,7 +522,7 @@ export function generatePattern(
       noise: generateHatPercuStyle(rng, d),
       chord: mergePercuLanes(generateNoiseFxPercuStyle(rng, percussiveNoisy, d), generateChordPercuStyle(rng, d)),
       bass: generateAcidPercuStyle(rng, d),
-      clap: generateClapMinimal(rng),
+      clap: generateClapPercuStyle(rng, d),
     };
 
     for (let ci = 0; ci < channelStates.length; ci++) {
