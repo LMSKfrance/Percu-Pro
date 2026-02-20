@@ -88,11 +88,15 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
   return (
     <div 
       className={cn(
-        "flex flex-col border-b border-[#121212]/5 overflow-hidden transition-all duration-400 ease-in-out",
+        "flex flex-col border-b border-[#121212]/5 overflow-hidden transition-all duration-400 ease-in-out relative",
         isExpanded ? "bg-[#121212]/[0.03] h-[196px]" : "bg-transparent h-[72px]",
-        isActive && "bg-[#E8E4DC] border-l-4 border-l-[#E66000]"
+        isActive && "bg-[#E8E4DC]"
       )}
     >
+      {/* Orange selection marker: absolutely positioned so it does not push row content */}
+      {isActive && (
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#E66000] z-10 pointer-events-none" aria-hidden />
+      )}
       {/* Main Row Bar — single-click to select, double-click to expand/collapse */}
       <div 
         className="flex items-center gap-6 h-[72px] px-8 flex-none cursor-pointer" 
