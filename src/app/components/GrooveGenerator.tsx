@@ -30,6 +30,7 @@ import {
   storePatternToChannelStates,
   getDefaultGrooveTemplateId,
   exportPercuPayload,
+  cityToDetroitBerlin,
 } from "../../core/groove";
 
 const GROOVE_PRESETS = [
@@ -131,12 +132,15 @@ export function GrooveGeneratorProvider({ children }: { children: React.ReactNod
           variationIndex: 0,
         };
         const channelStates = storePatternToChannelStates(pat);
+        const cityProfile = getState().ui?.cityProfile ?? "Tbilisi";
         const controls = {
           density: pat.density ?? 0.5,
           funkiness: complexity / 100,
           complexity: complexity / 100,
           fillAmount: intensity / 100,
           chaos: Math.min(0.3, intensity / 200),
+          detroitBerlin: cityToDetroitBerlin(cityProfile),
+          percussiveNoisy: intensity / 100,
         };
         const enginePattern = generatePattern(projectState, channelStates, controls, scope);
         const storePattern = enginePatternToStorePattern(

@@ -3,7 +3,8 @@
  */
 
 export { generatePattern } from "./generatePattern";
-export type { GenerateControls, GenerateScope } from "./generatePattern";
+export type { GenerateControls, GenerateScope, PercuStyleDerived } from "./generatePattern";
+export { computePercuStyleDerived, percuStyleBarSeed, cityToDetroitBerlin } from "./generatePattern";
 export { mutatePattern as mutatePatternEngine } from "./mutatePattern";
 export { applyGroove } from "./applyGroove";
 export type { ApplyGrooveParams } from "./applyGroove";

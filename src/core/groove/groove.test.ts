@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { generatePattern } from "./generatePattern";
+import { generatePattern, cityToDetroitBerlin } from "./generatePattern";
 import { enginePatternToStorePattern, storePatternToChannelStates } from "./mapToStore";
-import { hashEnginePatternState } from "./hashPatternState";
+import { hashEnginePatternState, hashStorePatternState } from "./hashPatternState";
 import { applyGroove } from "./applyGroove";
 import { createInitialPatternState } from "../patternTypes";
 import { getGrooveTemplate } from "./grooveTemplates";
@@ -64,6 +64,67 @@ describe("generatePattern determinism", () => {
       run2.push(hashEnginePatternState(engine));
     }
     expect(actual).toEqual(run2);
+  });
+});
+
+describe("Percu-style determinism", () => {
+  const percuControls = {
+    ...defaultControls,
+    detroitBerlin: 0.5,
+    percussiveNoisy: 0.3,
+  };
+
+  it("same seed and same params produce identical pattern (engine hash)", () => {
+    const project = { ...defaultProject, seed: 999 };
+    const a = generatePattern(project, defaultChannels, percuControls, "all");
+    const b = generatePattern(project, defaultChannels, percuControls, "all");
+    expect(hashEnginePatternState(b)).toBe(hashEnginePatternState(a));
+  });
+
+  it("same seed and same params produce identical pattern (store hash)", () => {
+    const project = { ...defaultProject, seed: 999 };
+    const engine = generatePattern(project, defaultChannels, percuControls, "all");
+    const storeA = enginePatternToStorePattern(engine, project.tempo, project.seed, project.swing, percuControls.density);
+    const engine2 = generatePattern(project, defaultChannels, percuControls, "all");
+    const storeB = enginePatternToStorePattern(engine2, project.tempo, project.seed, project.swing, percuControls.density);
+    expect(hashStorePatternState(storeB)).toBe(hashStorePatternState(storeA));
+  });
+
+  it("different detroitBerlin produces different pattern", () => {
+    const project = { ...defaultProject, seed: 42 };
+    const detroit = generatePattern(project, defaultChannels, { ...percuControls, detroitBerlin: 0 }, "all");
+    const berlin = generatePattern(project, defaultChannels, { ...percuControls, detroitBerlin: 1 }, "all");
+    expect(hashEnginePatternState(berlin)).not.toBe(hashEnginePatternState(detroit));
+  });
+});
+
+describe("cityToDetroitBerlin", () => {
+  it("maps Detroit → 0, Berlin → 1, Tbilisi/other → 0.5", () => {
+    expect(cityToDetroitBerlin("Detroit")).toBe(0);
+    expect(cityToDetroitBerlin("Berlin")).toBe(1);
+    expect(cityToDetroitBerlin("Tbilisi")).toBe(0.5);
+    expect(cityToDetroitBerlin("other")).toBe(0.5);
+    expect(cityToDetroitBerlin("")).toBe(0.5);
+  });
+});
+
+describe("Percu-style regression snapshot", () => {
+  const REGRESSION_SEED = 12345;
+  const REGRESSION_CONTROLS = {
+    density: 0.5,
+    funkiness: 0.5,
+    complexity: 0.5,
+    fillAmount: 0.4,
+    chaos: 0.2,
+    detroitBerlin: 0.5,
+    percussiveNoisy: 0.3,
+  };
+
+  it("fixed seed and params produce known engine hash (regression)", () => {
+    const project = { ...defaultProject, seed: REGRESSION_SEED };
+    const engine = generatePattern(project, defaultChannels, REGRESSION_CONTROLS, "all");
+    const hash = hashEnginePatternState(engine);
+    expect(hash).toBe("7519b596");
   });
 });
 

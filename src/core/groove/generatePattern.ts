@@ -4,18 +4,71 @@
 
 import type { ProjectState, ChannelState, StepState, PatternState } from "./types";
 import { mulberry32, hashStringToSeed, nextInt } from "./rng";
+import type { Rng } from "./rng";
 import { getAvatarForRole } from "./avatars";
 import { getRoleCaps } from "./taste";
 
+/**
+ * Detroit/Berlin axis (0 = Detroit, 1 = Berlin):
+ * - Detroit: more swing, more microtiming, less hat straightness, fewer ratchets, kick can go offbeat.
+ * - Berlin: less swing, more density, straighter hats, more ratchets, kick closer to 4/4.
+ *
+ * Percussive/Noisy axis (0 = percussive, 1 = noisy):
+ * - Percussive: less noise probability/level.
+ * - Noisy: more noise probability/level (noise/FX lane and texture).
+ *
+ * When omitted, city preset or existing controls can be used to derive these (e.g. Detroit → 0, Berlin → 1, Tbilisi → 0.5).
+ */
 export interface GenerateControls {
   density: number;
   funkiness: number;
   complexity: number;
   fillAmount: number;
   chaos: number;
+  /** 0 = Detroit, 1 = Berlin. When set, Percu-style generation is used with single bar RNG. */
+  detroitBerlin?: number;
+  /** 0 = percussive, 1 = noisy. Drives noise/FX probability and level. */
+  percussiveNoisy?: number;
 }
 
 export type GenerateScope = "all" | { channelIds: string[] };
+
+/** Derived once per pattern when using Percu-style (detroitBerlin/percussiveNoisy). All from 0..1 except microtimingAmountMs (ms). */
+export interface PercuStyleDerived {
+  swing: number;
+  effectiveDensity: number;
+  hatStraightness: number;
+  microtimingAmountMs: number;
+  ratchetProbability: number;
+  kick4on4: number;
+}
+
+export function computePercuStyleDerived(
+  detroitBerlin: number,
+  percussiveNoisy: number,
+  density: number
+): PercuStyleDerived {
+  const swing = 1 - detroitBerlin * 0.3;
+  const effectiveDensity = density * (0.5 + detroitBerlin * 0.5);
+  const hatStraightness = detroitBerlin;
+  const microtimingAmountMs = (1 - detroitBerlin) * 20;
+  const ratchetProbability = detroitBerlin * 0.3;
+  const kick4on4 = detroitBerlin;
+  return { swing, effectiveDensity, hatStraightness, microtimingAmountMs, ratchetProbability, kick4on4 };
+}
+
+/** Deterministic bar seed for Percu-style: same seed + params => same pattern. */
+export function percuStyleBarSeed(projectSeed: number, detroitBerlin: number, percussiveNoisy: number, variationIndex: number): number {
+  return hashStringToSeed(`percu-bar-${projectSeed}-${detroitBerlin}-${percussiveNoisy}-${variationIndex}`);
+}
+
+/** Map city preset to detroitBerlin axis: Detroit → 0, Berlin → 1, Tbilisi (or other) → 0.5. */
+export function cityToDetroitBerlin(cityProfile: string): number {
+  const c = cityProfile.trim().toLowerCase();
+  if (c === "detroit") return 0;
+  if (c === "berlin") return 1;
+  return 0.5;
+}
 
 const STEPS = 16;
 
@@ -231,6 +284,179 @@ function generateFx(rng: () => number, controls: GenerateControls, avatarSwing: 
   return steps;
 }
 
+// --- Percu-style lane generators (single bar RNG, derived params) ---
+
+function generateKickPercuStyle(rng: Rng, d: PercuStyleDerived): StepState[] {
+  const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+  for (let i = 0; i < STEPS; i++) {
+    const step = i % 4 === 0;
+    const prob = step ? 1 : d.effectiveDensity * 0.3;
+    const on = step || (d.kick4on4 < 0.5 && rng() < prob);
+    steps[i] = {
+      ...emptyStep(),
+      active: on,
+      velocity: on ? clamp(0.8 + rng() * 0.2, 0.15, 1) : 0.8,
+      probability: on ? 1 : prob,
+      microShiftMs: on ? Math.round((rng() - 0.5) * d.microtimingAmountMs) : 0,
+      ratchetCount: on && rng() < d.ratchetProbability ? 1 + nextInt(rng, 2) : 0,
+      accent: on && i % 4 === 0 && rng() < 0.4,
+    };
+  }
+  return steps;
+}
+
+function generateSubPercuStyle(rng: Rng, kickSteps: StepState[], d: PercuStyleDerived): StepState[] {
+  const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+  for (let i = 0; i < STEPS; i++) {
+    const kickOn = kickSteps[i].active;
+    const on = kickOn && rng() < 0.7;
+    steps[i] = {
+      ...emptyStep(),
+      active: on,
+      velocity: on ? clamp(kickSteps[i].velocity * (0.5 + rng() * 0.3), 0.15, 1) : 0.8,
+      probability: kickOn ? 0.7 : 0,
+      microShiftMs: on ? kickSteps[i].microShiftMs + Math.round((rng() - 0.5) * 5) : 0,
+    };
+  }
+  return steps;
+}
+
+function generateLowPercPercuStyle(rng: Rng, kickSteps: StepState[], d: PercuStyleDerived): StepState[] {
+  const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+  for (let i = 0; i < STEPS; i++) {
+    const avoidKick = kickSteps[i].active;
+    const prob = avoidKick ? d.effectiveDensity * 0.2 : d.effectiveDensity * 0.4;
+    const on = rng() < prob;
+    steps[i] = {
+      ...emptyStep(),
+      active: on,
+      velocity: on ? clamp(0.5 + rng() * 0.4, 0.15, 1) : 0.8,
+      probability: prob,
+      microShiftMs: on ? Math.round((rng() - 0.5) * d.microtimingAmountMs) : 0,
+      ratchetCount: on && rng() < d.ratchetProbability * 0.5 ? 1 : 0,
+    };
+  }
+  return steps;
+}
+
+function generateMidPercPercuStyle(rng: Rng, d: PercuStyleDerived): StepState[] {
+  const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+  for (let i = 0; i < STEPS; i++) {
+    const prob = d.effectiveDensity * 0.3;
+    const on = rng() < prob;
+    steps[i] = {
+      ...emptyStep(),
+      active: on,
+      velocity: on ? clamp(0.4 + rng() * 0.5, 0.15, 1) : 0.8,
+      probability: prob,
+      microShiftMs: on ? Math.round((rng() - 0.5) * d.microtimingAmountMs) : 0,
+      ratchetCount: on && rng() < d.ratchetProbability * 0.7 ? 1 + nextInt(rng, 2) : 0,
+    };
+  }
+  return steps;
+}
+
+function generateHatPercuStyle(rng: Rng, d: PercuStyleDerived): StepState[] {
+  const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+  for (let i = 0; i < STEPS; i++) {
+    const straight = i % 2 === 0 || (i % 2 === 1 && d.hatStraightness > 0.5);
+    const swingOffset = i % 2 === 1 ? (1 - d.swing) * 10 : 0;
+    const prob = straight ? d.effectiveDensity * 0.6 : d.effectiveDensity * 0.3;
+    const on = rng() < prob;
+    steps[i] = {
+      ...emptyStep(),
+      active: on,
+      velocity: on ? clamp(0.3 + rng() * 0.5, 0.15, 1) : 0.8,
+      probability: prob,
+      microShiftMs: on ? Math.round((rng() - 0.5) * d.microtimingAmountMs * 0.5 + swingOffset) : 0,
+      ratchetCount: on && rng() < d.ratchetProbability * 0.8 ? 1 + nextInt(rng, 2) : 0,
+      accent: on && i % 4 === 0 && rng() < 0.35,
+    };
+  }
+  return steps;
+}
+
+function generateNoiseFxPercuStyle(rng: Rng, percussiveNoisy: number, d: PercuStyleDerived): StepState[] {
+  const noiseProb = percussiveNoisy * 0.4 + d.effectiveDensity * 0.2;
+  const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+  for (let i = 0; i < STEPS; i++) {
+    const on = rng() < noiseProb;
+    steps[i] = {
+      ...emptyStep(),
+      active: on,
+      velocity: on ? clamp(percussiveNoisy * 0.6 + rng() * 0.4, 0.15, 1) : 0.8,
+      probability: noiseProb,
+      microShiftMs: on ? Math.round((rng() - 0.5) * d.microtimingAmountMs) : 0,
+      ratchetCount: on && rng() < d.ratchetProbability * 0.6 ? 1 : 0,
+    };
+  }
+  return steps;
+}
+
+function generateChordPercuStyle(rng: Rng, d: PercuStyleDerived): StepState[] {
+  const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+  for (let i = 0; i < STEPS; i++) {
+    const on = i % 4 === 0 && rng() < d.effectiveDensity * 0.5;
+    steps[i] = {
+      ...emptyStep(),
+      active: on,
+      velocity: on ? clamp(0.4 + rng() * 0.3, 0.15, 1) : 0.8,
+      probability: d.effectiveDensity * 0.5,
+      microShiftMs: on ? Math.round((rng() - 0.5) * d.microtimingAmountMs * 0.5) : 0,
+    };
+  }
+  return steps;
+}
+
+function generateAcidPercuStyle(rng: Rng, d: PercuStyleDerived): StepState[] {
+  const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+  for (let i = 0; i < STEPS; i++) {
+    const on = rng() < d.effectiveDensity * 0.35;
+    steps[i] = {
+      ...emptyStep(),
+      active: on,
+      velocity: on ? clamp(0.5 + rng() * 0.4, 0.15, 1) : 0.8,
+      probability: d.effectiveDensity * 0.35,
+      microShiftMs: on ? Math.round((rng() - 0.5) * d.microtimingAmountMs) : 0,
+      ratchetCount: on && rng() < d.ratchetProbability * 0.4 ? 1 : 0,
+    };
+  }
+  return steps;
+}
+
+function generateClapMinimal(rng: Rng): StepState[] {
+  const steps: StepState[] = Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+  for (const i of [4, 12]) {
+    steps[i] = {
+      ...emptyStep(),
+      active: true,
+      velocity: 0.85,
+      probability: 1,
+      accent: rng() < 0.4,
+    };
+  }
+  return steps;
+}
+
+/** Merge two Percu-style lanes (e.g. noise + chord into chord lane). Step on if either on; velocity max. */
+function mergePercuLanes(a: StepState[], b: StepState[]): StepState[] {
+  const steps: StepState[] = Array.from({ length: STEPS }, (_, i) => {
+    const sa = a[i];
+    const sb = b[i];
+    const on = sa.active || sb.active;
+    const vel = on ? Math.max(sa.active ? sa.velocity : 0, sb.active ? sb.velocity : 0) : 0.8;
+    return {
+      ...emptyStep(),
+      active: on,
+      velocity: vel,
+      probability: sa.active ? sa.probability : sb.probability,
+      microShiftMs: sa.active ? sa.microShiftMs : sb.microShiftMs,
+      accent: sa.accent || sb.accent,
+    };
+  });
+  return steps;
+}
+
 function channelRole(id: string): string {
   if (id === "kick") return "kick";
   if (id === "noise") return "hat";
@@ -252,6 +478,40 @@ export function generatePattern(
 
   const channels: ChannelState[] = [];
   const steps: StepState[][] = [];
+
+  const usePercuStyle = controls.detroitBerlin !== undefined;
+  const detroitBerlin = usePercuStyle ? clamp(controls.detroitBerlin!, 0, 1) : 0.5;
+  const percussiveNoisy = usePercuStyle ? clamp(controls.percussiveNoisy ?? 0, 0, 1) : 0;
+
+  if (usePercuStyle) {
+    const d = computePercuStyleDerived(detroitBerlin, percussiveNoisy, controls.density);
+    const barSeed = percuStyleBarSeed(projectState.seed, detroitBerlin, percussiveNoisy, projectState.variationIndex);
+    const rng = mulberry32(barSeed);
+
+    const kickSteps = generateKickPercuStyle(rng, d);
+    const percuStyleByChannelId: Record<string, StepState[]> = {
+      kick: kickSteps,
+      subPerc: generateSubPercuStyle(rng, kickSteps, d),
+      lowPerc: generateLowPercPercuStyle(rng, kickSteps, d),
+      hiPerc: generateMidPercPercuStyle(rng, d),
+      noise: generateHatPercuStyle(rng, d),
+      chord: mergePercuLanes(generateNoiseFxPercuStyle(rng, percussiveNoisy, d), generateChordPercuStyle(rng, d)),
+      bass: generateAcidPercuStyle(rng, d),
+      clap: generateClapMinimal(rng),
+    };
+
+    for (let ci = 0; ci < channelStates.length; ci++) {
+      const ch = channelStates[ci];
+      channels.push(ch);
+      if (!channelIds.includes(ch.id)) {
+        steps.push(Array.from({ length: STEPS }, () => ({ ...emptyStep() })));
+        continue;
+      }
+      const stepStates = percuStyleByChannelId[ch.id] ?? Array.from({ length: STEPS }, () => ({ ...emptyStep() }));
+      steps.push(stepStates);
+    }
+    return { channels, steps };
+  }
 
   for (let ci = 0; ci < channelStates.length; ci++) {
     const ch = channelStates[ci];
