@@ -89,7 +89,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
     <div 
       className={cn(
         "flex flex-col border-b border-[#121212]/5 overflow-hidden transition-all duration-400 ease-in-out",
-        isExpanded ? "bg-[#121212]/[0.03] h-[280px]" : "bg-transparent h-[72px]",
+        isExpanded ? "bg-[#121212]/[0.03] h-[196px]" : "bg-transparent h-[72px]",
         isActive && "bg-[#E8E4DC] border-l-4 border-l-[#E66000]"
       )}
     >
@@ -178,9 +178,9 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="flex-1 border-t border-[#121212]/08 px-8 py-5 flex flex-col gap-6 min-h-0"
+            className="flex-1 border-t border-[#121212]/08 px-8 py-3 flex flex-col gap-4 min-h-0 overflow-hidden"
           >
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 flex-none">
               <div className="flex items-center gap-2 text-[#121212]/40">
                 <Sliders size={14} strokeWidth={2.5} />
                 <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Micro-timing</span>
@@ -207,24 +207,24 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
               </div>
             </div>
 
-            {/* Velocity lane: same layout as step row so bars align 1:1 with steps (Ableton-style) */}
-            <div className="flex flex-col gap-2 flex-1 min-w-0">
-              <div className="flex items-center gap-2 text-[#121212]/40">
+            {/* Velocity lane: title then bars at max height down to bottom */}
+            <div className="flex flex-col gap-1.5 flex-1 min-h-[56px] min-w-0 overflow-hidden">
+              <div className="flex items-center gap-2 text-[#121212]/50 flex-none">
                 <Shuffle size={14} strokeWidth={2.5} />
                 <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Velocity</span>
               </div>
-              <div className="flex items-center gap-6 flex-1 min-w-0">
+              <div className="flex items-end gap-6 flex-1 min-h-0 min-w-0">
                 <div className="flex-none w-[340px]" aria-hidden />
-                <div className="flex flex-1 gap-1.5 min-w-[500px]">
+                <div className="flex flex-1 gap-1.5 min-w-[500px] min-h-[44px] h-full">
                   {[...Array(16)].map((_, i) => (
-                    <div key={i} className="flex-1 min-w-0 flex flex-col items-stretch gap-1">
-                      <div className="w-full h-[52px] bg-[#121212]/10 rounded-[2px] relative overflow-hidden flex items-end">
+                    <div key={i} className="flex-1 min-w-0 flex flex-col items-stretch gap-0.5 min-h-0 flex-1">
+                      <div className="w-full flex-1 min-h-[36px] bg-[#121212]/18 rounded-[2px] relative overflow-hidden">
                         <div 
-                          className="absolute bottom-0 left-0 right-0 bg-[#E66000]/70 rounded-[2px] transition-[height] duration-100"
-                          style={{ height: `${velocities[i] ?? 100}%` }}
+                          className="absolute bottom-0 left-0 right-0 bg-[#E66000] rounded-[2px] transition-[height] duration-100"
+                          style={{ height: `${Math.max(4, velocities[i] ?? 100)}%` }}
                         />
                       </div>
-                      <span className="text-[7px] font-mono font-bold text-[#121212]/20 tabular-nums text-center">{i + 1}</span>
+                      <span className="text-[7px] font-mono font-bold text-[#121212]/30 tabular-nums text-center flex-none">{i + 1}</span>
                     </div>
                   ))}
                 </div>
