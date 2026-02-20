@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Percu Pro — Full Design System Reference</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       PERCU PRO DESIGN TOKENS (for Figma variables)
+       ============================================================
+       Colors:
+         --bg-page:       #F2F2EB   (page background)
+         --bg-panel:      #181818   (dark panels, buttons)
+         --bg-panel-alt:  #121212   (sidebar, instrument)
+         --bg-input:      #0a0a0a   (inputs, oscilloscope)
+         --border-light:  rgba(18,18,18,0.05)
+         --border-dark:  rgba(255,255,255,0.03)
+         --primary:      #E66000   (orange, CTAs, accent)
+         --primary-dim:   #E66000/20, /40, /60
+         --secondary:    #00D2FF   (cyan, meters, sync)
+         --secondary-dim: #00D2FF/20, /40, /60
+         --text-light:   #121212, /80, /60, /30, /20, /10
+         --text-dark:    white, /90, /40, /30, /20, /10
+         --dock-bg:      #0D0E12
+         --dock-border:  #1F2128
+       Spacing:
+         --header-h:     80px
+         --groove-bar-h: 80px
+         --sequencer-subheader-h: 64px
+         --lane-row-h:   72px
+         --dock-h:       64px
+         --sidebar-w:    560px
+         --master-left-w:  380px
+         --master-right-w: 320px
+       Typography:
+         Font stack: Inter (sans), JetBrains Mono (mono)
+         Labels: 8–10px, mono, bold, uppercase, tracking 0.15em–0.2em
+         Titles: 11–13px, sans, bold, uppercase
+         Values: 11–14px, mono, bold
+       ============================================================ */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #F2F2EB;
+      color: #121212;
+      min-height: 100vh;
+      padding-bottom: 64px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---------- HEADER ---------- */
+    .header {
+      height: 80px;
+      padding: 0 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(18,18,18,0.05);
+      background: #F2F2EB;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 12px; user-select: none; }
+    .logo-box {
+      width: 32px; height: 32px;
+      background: #181818;
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+    .logo-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #E66000; }
+    .logo-title { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: rgba(18,18,18,0.9); text-transform: uppercase; }
+    .logo-title span { color: #E66000; }
+    .logo-sub { font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 700; letter-spacing: 0.3em; color: rgba(18,18,18,0.3); text-transform: uppercase; margin-top: -2px; }
+
+    .header-center { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+    .btn-generate {
+      height: 44px; padding: 0 24px; border-radius: 6px;
+      display: flex; align-items: center; gap: 12px;
+      background: #181818; color: white; border: none; cursor: pointer;
+      font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
+      box-shadow: 0 10px 15px -3px rgba(24,24,24,0.1);
+    }
+    .btn-generate:hover { background: #2a2a2a; }
+    .btn-generate .icon { color: #E66000; }
+    .seed-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.15em; color: rgba(18,18,18,0.2); text-transform: uppercase; margin-bottom: 4px; }
+    .seed-value { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; color: rgba(18,18,18,0.8); background: rgba(18,18,18,0.03); border: 1px solid rgba(18,18,18,0.05); border-radius: 4px; padding: 6px 12px; }
+    .header-divider { width: 1px; height: 32px; background: rgba(18,18,18,0.08); }
+
+    .header-stats { display: flex; align-items: center; gap: 40px; font-family: 'JetBrains Mono', monospace; }
+    .stat { display: flex; flex-direction: column; align-items: flex-end; }
+    .stat-label { display: flex; align-items: center; gap: 8px; font-size: 9px; font-weight: 700; letter-spacing: 0.15em; color: rgba(18,18,18,0.2); text-transform: uppercase; }
+    .stat-value { font-size: 13px; font-weight: 700; color: rgba(18,18,18,0.8); }
+    .stat-value small { font-size: 9px; color: rgba(18,18,18,0.2); }
+    .cpu-bar { width: 48px; height: 4px; background: rgba(18,18,18,0.05); border-radius: 9999px; overflow: hidden; }
+    .cpu-fill { height: 100%; width: 18%; background: rgba(0,210,255,0.4); border-radius: 9999px; animation: cpu 3s ease-in-out infinite; }
+    @keyframes cpu { 0%,100%{width:15%} 50%{width:22%} }
+    .peak-bars { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+    .peak-bar { width: 2px; border-radius: 9999px; background: rgba(18,18,18,0.15); height: 6px; animation: peak 1.2s ease-in-out infinite; }
+    .peak-bar:nth-child(n+10) { background: rgba(230,96,0,0.4); }
+    @keyframes peak { 0%,100%{height:6px} 50%{height:12px} }
+    .stat-divider { width: 1px; height: 24px; background: rgba(18,18,18,0.05); margin: 0 4px; }
+
+    /* ---------- GROOVE BAR (second row) ---------- */
+    .groove-bar {
+      height: 80px; padding: 0 48px;
+      background: #F2F2EB;
+      border-bottom: 1px solid rgba(18,18,18,0.05);
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 32px;
+      position: relative;
+    }
+    .groove-bar::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(230,96,0,0.02), transparent); pointer-events: none; }
+    .groove-left { display: flex; align-items: flex-end; gap: 32px; min-width: 0; }
+    .presets-label { font-size: 9px; font-weight: 700; letter-spacing: 0.15em; color: rgba(18,18,18,0.2); text-transform: uppercase; font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; }
+    .presets-strip { display: flex; align-items: center; border-radius: 4px; border: 1px solid rgba(18,18,18,0.05); background: rgba(18,18,18,0.03); }
+    .presets-strip button { padding: 8px 12px; border: none; background: none; color: rgba(18,18,18,0.5); cursor: pointer; font: inherit; }
+    .presets-strip .name { padding: 8px 12px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: rgba(18,18,18,0.8); }
+    .preset-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px rgba(230,96,0,0.4); background: #E66000; }
+    .sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; max-width: 420px; align-content: end; }
+    .slider-head { display: flex; justify-content: space-between; font-size: 9px; font-weight: 700; letter-spacing: 0.15em; font-family: 'JetBrains Mono', monospace; }
+    .slider-head .pct { color: #E66000; }
+    .slider-head .pct.blue { color: #00D2FF; }
+    .slider-track { height: 8px; border-radius: 2px; background: rgba(18,18,18,0.12); overflow: hidden; }
+    .slider-fill { height: 100%; border-radius: 2px; background: #181818; }
+    .slider-fill.cpl { width: 45%; }
+    .slider-fill.int { width: 60%; }
+
+    .city-wrap {
+      display: flex; align-items: center;
+      background: rgba(18,18,18,0.03);
+      padding: 4px; border-radius: 6px;
+      width: 320px;
+      border: 1px solid rgba(18,18,18,0.05);
+      position: relative;
+    }
+    .city-wrap button { flex: 1; padding: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; border: none; background: none; border-radius: 4px; color: rgba(18,18,18,0.3); cursor: pointer; position: relative; z-index: 1; }
+    .city-wrap button.active { color: white; }
+    .city-slider { position: absolute; top: 4px; left: 4px; height: calc(100% - 8px); width: calc(33.333% - 6px); background: #181818; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+    /* ---------- MAIN LAYOUT ---------- */
+    .main-wrap { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+    .sequencer-section { flex: 1; min-width: 880px; display: flex; flex-direction: column; border-right: 1px solid rgba(18,18,18,0.05); overflow-y: auto; }
+    .sequencer-subheader {
+      height: 64px; padding: 0 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(18,18,18,0.05);
+      background: rgba(242,242,235,0.8);
+      backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 30;
+    }
+    .sequencer-subheader .title { font-size: 12px; font-weight: 700; letter-spacing: 0.15em; color: rgba(18,18,18,0.6); text-transform: uppercase; }
+    .sequencer-subheader .meta { font-size: 9px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(18,18,18,0.3); text-transform: uppercase; }
+    .sequencer-subheader .shuffle-label { font-size: 8px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(18,18,18,0.3); text-transform: uppercase; }
+    .sequencer-subheader .quantize { font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(18,18,18,0.8); }
+
+    /* Lane row */
+    .lane-row {
+      display: flex; align-items: center;
+      height: 72px; padding: 0 32px; gap: 24px;
+      border-bottom: 1px solid rgba(18,18,18,0.05);
+      background: transparent;
+      transition: background 0.2s;
+    }
+    .lane-row.active { background: #E8E4DC; }
+    .lane-row.active .lane-accent { display: block; }
+    .lane-accent { display: none; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #E66000; z-index: 1; }
+    .lane-left { display: flex; align-items: center; gap: 16px; width: 240px; flex-shrink: 0; position: relative; }
+    .lane-mute {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: none; cursor: pointer;
+      background: #E66000; border: 1px solid #E66000;
+      box-shadow: 0 0 10px rgba(230,96,0,0.2);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .lane-mute.muted { background: #6b6b6b; border-color: #5a5a5a; box-shadow: none; }
+    .lane-label-wrap { display: flex; flex-direction: column; min-width: 0; }
+    .lane-label { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(18,18,18,0.8); }
+    .lane-row.active .lane-label { color: #E66000; }
+    .lane-meta { font-size: 8px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(18,18,18,0.3); text-transform: uppercase; margin-top: 2px; }
+    .lane-nudge { display: flex; gap: 4px; }
+    .lane-nudge button { padding: 6px; border: none; background: none; color: rgba(18,18,18,0.15); cursor: pointer; }
+    .step-grid { display: flex; flex: 1; gap: 6px; min-width: 500px; }
+    .step {
+      flex: 1; aspect-ratio: 1; max-width: 48px;
+      border-radius: 3px;
+      border: 1px solid rgba(61,61,61,1);
+      background: #2d2d2d;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .step:hover { border-color: rgba(230,96,0,0.5); }
+    .step.on {
+      background: rgba(230,96,0,0.6);
+      border-color: rgba(230,96,0,0.6);
+      box-shadow: 0 0 8px rgba(230,96,0,0.3);
+    }
+    .step.current { box-shadow: inset 0 0 0 2px #00D2FF; }
+
+    /* ---------- INSTRUMENT SIDEBAR ---------- */
+    .sidebar {
+      width: 560px; flex-shrink: 0;
+      background: #181818;
+      border-left: 1px solid rgba(255,255,255,0.03);
+      display: flex; flex-direction: column; overflow-y: auto;
+    }
+    .sidebar-header {
+      height: 64px; padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      background: rgba(24,24,24,0.9);
+      backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 30;
+    }
+    .sidebar-header .title { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+    .sidebar-header .badge { display: flex; align-items: center; gap: 12px; }
+    .sidebar-header .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(0,210,255,0.4); }
+    .sidebar-header .badge span { font-size: 8px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(255,255,255,0.2); letter-spacing: 0.2em; text-transform: uppercase; }
+
+    .instrument-panel {
+      border-top: 1px solid rgba(255,255,255,0.03);
+      background: #121212;
+      padding: 24px;
+    }
+    .instrument-panel .track-title { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; color: #E66000; text-transform: uppercase; }
+    .instrument-panel .track-sub { font-size: 8px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(255,255,255,0.1); letter-spacing: 0.2em; text-transform: uppercase; margin-top: 2px; }
+    .instrument-panel .knobs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 24px; }
+    .knob-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .knob-body {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.05);
+      display: flex; align-items: flex-start; justify-content: center; padding-top: 6px;
+    }
+    .knob-indicator { width: 2px; height: 12px; background: #E66000; border-radius: 1px; box-shadow: 0 0 4px rgba(230,96,0,0.4); transform: rotate(-45deg); }
+    .knob-label { font-size: 9px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.2em; color: rgba(255,255,255,0.2); text-transform: uppercase; }
+    .waveform { height: 40px; background: #0a0a0a; border-radius: 2px; border: 1px solid rgba(255,255,255,0.03); padding: 8px; display: flex; align-items: flex-end; gap: 1px; margin-top: 24px; }
+    .waveform span { flex: 1; background: rgba(0,210,255,0.2); border-radius: 1px; min-height: 4px; }
+
+    .instrument-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; border-top: 1px solid rgba(255,255,255,0.03); }
+    .instrument-empty .msg { font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.15em; }
+    .instrument-empty .hint { font-size: 9px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.1); margin-top: 8px; }
+
+    .global-oversample { padding: 32px; border-top: 1px solid rgba(255,255,255,0.03); background: rgba(255,255,255,0.01); }
+    .global-oversample .label { font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(255,255,255,0.1); text-transform: uppercase; letter-spacing: 0.15em; }
+    .global-oversample .value { font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(0,210,255,0.6); }
+    .global-oversample .knobs { display: flex; gap: 24px; margin-top: 16px; }
+
+    /* ---------- MASTER SECTION (expandable) ---------- */
+    .master-expanded {
+      height: 300px;
+      background: #181818;
+      border-top: 1px solid rgba(255,255,255,0.03);
+      display: flex;
+      overflow: hidden;
+    }
+    .master-left {
+      width: 380px;
+      border-right: 1px solid rgba(255,255,255,0.03);
+      padding: 32px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .master-left .label { font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(255,255,255,0.1); text-transform: uppercase; letter-spacing: 0.15em; }
+    .master-left .db { font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(230,96,0,0.8); }
+    .fader-wrap { display: flex; align-items: flex-end; gap: 40px; }
+    .fader-track { width: 8px; height: 180px; background: #0a0a0a; border-radius: 9999px; border: 1px solid #2a2a2a; position: relative; }
+    .fader-cap { position: absolute; left: 50%; transform: translateX(-50%); bottom: 25%; width: 32px; height: 24px; background: #d1d1ca; border-radius: 2px; border: 1px solid #a1a19a; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .fader-cap::after { content: ''; display: block; width: 20px; height: 2px; background: #FF6B00; margin: 4px auto 0; box-shadow: 0 0 4px rgba(255,107,0,0.4); }
+    .oscilloscope { flex: 1; height: 180px; background: #0a0a0a; border-radius: 2px; border: 1px solid rgba(255,255,255,0.02); padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+    .oscilloscope .osc-label { font-size: 8px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.1); text-transform: uppercase; letter-spacing: 0.15em; }
+    .oscilloscope .osc-name { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 8px; }
+    .osc-bars { display: flex; align-items: flex-end; gap: 1px; height: 40px; }
+    .osc-bars span { width: 2px; background: rgba(0,210,255,0.2); border-radius: 9999px; flex: 1; min-height: 4px; animation: peak 0.8s ease-in-out infinite; }
+
+    .master-center { flex: 1; padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+    .master-center .label { font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(255,255,255,0.1); text-transform: uppercase; letter-spacing: 0.15em; }
+    .master-center .cards { display: flex; gap: 16px; }
+    .fx-card {
+      flex: 1; padding: 16px;
+      background: #1a1a1a;
+      border-radius: 2px;
+      border: 1px solid #2a2a2a;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+    .fx-card .fx-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .fx-card .fx-head span { font-size: 12px; font-weight: 700; letter-spacing: 0.15em; color: rgba(242,242,235,0.9); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+    .fx-card .fx-head span svg { color: rgba(255,107,0,0.8); }
+    .fx-card .power { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,107,0,0.1); border: 1px solid rgba(255,107,0,0.4); display: flex; align-items: center; justify-content: center; }
+    .fx-card .wet-bar { height: 4px; background: #0a0a0a; border-radius: 9999px; margin-top: 16px; overflow: hidden; }
+    .fx-card .wet-fill { height: 100%; width: 45%; background: #FF6B00; border-radius: 9999px; }
+
+    .master-right {
+      width: 320px;
+      background: #121212;
+      padding: 32px;
+      border-left: 1px solid rgba(255,255,255,0.03);
+      display: flex; flex-direction: column; gap: 24px;
+    }
+    .master-right .label { font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(255,255,255,0.1); text-transform: uppercase; letter-spacing: 0.15em; }
+    .transport { display: flex; align-items: center; justify-content: space-between; }
+    .transport button {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.05);
+      background: transparent;
+      color: rgba(255,255,255,0.1);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .transport button.play { width: 56px; height: 56px; background: #E66000; color: white; border: none; box-shadow: 0 0 20px rgba(230,96,0,0.2); }
+    .transport button.play svg { margin-left: 2px; }
+    .transport-clk { font-size: 8px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.1); letter-spacing: 0.2em; text-transform: uppercase; margin-top: 4px; }
+    .midi-section { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+    .midi-section .label { margin-bottom: 0; }
+    .midi-section select { width: 100%; background: #0a0a0a; border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; padding: 6px 8px; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.8); }
+    .midi-section .field-label { font-size: 8px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 4px; }
+    .btn-midi { padding: 8px 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); font-size: 11px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.7); background: transparent; cursor: pointer; }
+
+    /* ---------- FOOTER DOCK (always visible) ---------- */
+    .dock {
+      height: 64px;
+      background: #0D0E12;
+      border-top: 1px solid #1F2128;
+      box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.03);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      gap: 24px;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+    }
+    .dock-meter { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: #1F2128; overflow: hidden; }
+    .dock-meter-fill { height: 100%; width: 65%; background: #00D2FF; }
+    .dock-left { display: flex; align-items: center; gap: 16px; }
+    .dock-left .label { font-size: 9px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.15em; color: rgba(255,255,255,0.5); text-transform: uppercase; }
+    .dock-status { display: flex; align-items: center; gap: 12px; border-left: 1px solid #1F2128; padding-left: 16px; }
+    .dock-status .item { display: flex; align-items: center; gap: 6px; }
+    .dock-status .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .dock-status .dot.rec { background: #E66000; }
+    .dock-status .dot.sync { background: #00D2FF; }
+    .dock-status .txt { font-size: 8px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.1em; }
+
+    .dock-center { display: flex; align-items: center; gap: 16px; }
+    .dock-center button {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 1px solid #1F2128;
+      background: rgba(255,255,255,0.02);
+      color: rgba(255,255,255,0.3);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .dock-center button.play { border-color: rgba(230,96,0,0.5); background: rgba(230,96,0,0.1); color: rgba(230,96,0,0.9); box-shadow: 0 0 12px rgba(230,96,0,0.25); }
+    .dock-center .bpm { min-width: 88px; height: 36px; padding: 0 8px; border: 1px solid #1F2128; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(255,255,255,0.8); cursor: ns-resize; }
+
+    .dock-mini-fx { display: flex; align-items: center; gap: 16px; }
+    .dock-mini-fx .label { font-size: 8px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.15em; writing-mode: vertical-rl; transform: rotate(180deg); height: 32px; display: flex; align-items: center; }
+    .dock-mini-fx .controls { display: flex; align-items: center; gap: 12px; border-left: 1px solid #1F2128; padding-left: 16px; }
+    .dock-gr { width: 4px; height: 32px; background: #1F2128; border-radius: 9999px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+    .dock-gr-fill { width: 100%; height: 12%; background: rgba(0,210,255,0.6); }
+    .dock-knob-small { width: 20px; height: 20px; border-radius: 50%; background: #1F2128; border: 1px solid #2a2d35; cursor: ns-resize; }
+    .dock-right { display: flex; align-items: center; gap: 12px; }
+    .btn-export { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 32px; border-radius: 4px; border: 1px solid rgba(230,96,0,0.4); font-size: 9px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.15em; color: #E66000; background: transparent; cursor: pointer; }
+    .btn-expand { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #1F2128; background: transparent; color: rgba(255,255,255,0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body>
+  <!-- ==================== HEADER ==================== -->
+  <header class="header">
+    <div class="logo-wrap">
+      <div class="logo-box"><div class="logo-dot"></div></div>
+      <div>
+        <div class="logo-title">PERCU <span>PRO</span></div>
+        <div class="logo-sub">Workstation v1.0</div>
+      </div>
+    </div>
+    <div class="header-center">
+      <button type="button" class="btn-generate">
+        <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 0-4 4v2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4Z"/></svg>
+        Generate Groove
+      </button>
+      <div class="header-divider"></div>
+      <div>
+        <div class="seed-label">Seed</div>
+        <div class="seed-value">42</div>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat">
+        <div class="stat-label">CPU_CORE</div>
+        <div class="cpu-bar"><div class="cpu-fill"></div></div>
+        <span class="stat-value" style="margin-top:4px">18.4%</span>
+      </div>
+      <div class="stat">
+        <div class="stat-label">MASTER_CLK</div>
+        <span class="stat-value">132.00 <small>BPM</small></span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-label">PEAK_OUT</div>
+        <div class="peak-bars">
+          <span class="peak-bar"></span><span class="peak-bar"></span><span class="peak-bar"></span>
+          <span class="peak-bar"></span><span class="peak-bar"></span><span class="peak-bar"></span>
+          <span class="peak-bar"></span><span class="peak-bar"></span><span class="peak-bar"></span>
+          <span class="peak-bar"></span><span class="peak-bar"></span><span class="peak-bar"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== GROOVE BAR ==================== -->
+  <div class="groove-bar">
+    <div class="groove-left">
+      <div>
+        <div class="presets-label">✦ Algorithm Presets</div>
+        <div class="presets-strip">
+          <button type="button">‹</button>
+          <button type="button" class="name"><span class="preset-dot"></span> Classic Swing</button>
+          <button type="button">›</button>
+        </div>
+      </div>
+      <div class="sliders">
+        <div>
+          <div class="slider-head"><span>Complexity</span><span class="pct">45%</span></div>
+          <div class="slider-track"><div class="slider-fill cpl"></div></div>
+        </div>
+        <div>
+          <div class="slider-head"><span>Velocity Variation</span><span class="pct blue">60%</span></div>
+          <div class="slider-track"><div class="slider-fill int"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="city-wrap">
+      <div class="city-slider" style="transform: translateX(0);"></div>
+      <button type="button" class="active">Detroit</button>
+      <button type="button">Tbilisi</button>
+      <button type="button">Berlin</button>
+    </div>
+    <div></div>
+  </div>
+
+  <!-- ==================== MAIN ==================== -->
+  <div class="main-wrap">
+    <section class="sequencer-section">
+      <div class="sequencer-subheader">
+        <div style="display:flex;align-items:center;gap:16px;">
+          <span class="title">Pattern Sequencer</span>
+          <div style="width:1px;height:12px;background:rgba(18,18,18,0.1);"></div>
+          <span class="meta">16 STEPS_32B</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:24px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="shuffle-label">SHUFFLE</span>
+            <div style="width:64px;height:4px;background:rgba(18,18,18,0.05);border-radius:9999px;"><div style="width:45%;height:100%;background:rgba(230,96,0,0.4);border-radius:9999px;"></div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="shuffle-label">QUANTIZE</span>
+            <span class="quantize">1/16_SWING</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="lane-row active">
+          <div class="lane-accent"></div>
+          <div class="lane-left">
+            <button type="button" class="lane-mute" title="Mute"></button>
+            <div class="lane-label-wrap">
+              <span class="lane-label">Kick</span>
+              <div class="lane-meta">PATCH_A6</div>
+            </div>
+          </div>
+          <div class="lane-nudge"><button type="button">‹</button><button type="button">›</button></div>
+          <div class="step-grid">
+            <div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div>
+            <div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div>
+            <div class="step"></div><div class="step on"></div><div class="step"></div><div class="step on"></div>
+            <div class="step"></div><div class="step"></div><div class="step on"></div><div class="step current"></div>
+          </div>
+        </div>
+        <div class="lane-row">
+          <div class="lane-left">
+            <button type="button" class="lane-mute muted"></button>
+            <div class="lane-label-wrap">
+              <span class="lane-label">Noise (Hats)</span>
+              <div class="lane-meta">PATCH_A14</div>
+            </div>
+          </div>
+          <div class="lane-nudge"><button type="button">‹</button><button type="button">›</button></div>
+          <div class="step-grid">
+            <div class="step on"></div><div class="step on"></div><div class="step"></div><div class="step on"></div>
+            <div class="step on"></div><div class="step"></div><div class="step on"></div><div class="step on"></div>
+            <div class="step"></div><div class="step on"></div><div class="step on"></div><div class="step"></div>
+            <div class="step on"></div><div class="step"></div><div class="step on"></div><div class="step on"></div>
+          </div>
+        </div>
+        <div class="lane-row"><div class="lane-left"><button type="button" class="lane-mute"></button><div class="lane-label-wrap"><span class="lane-label">Hi Perc</span><div class="lane-meta">PATCH_A3</div></div></div><div class="lane-nudge"><button>‹</button><button>›</button></div><div class="step-grid"><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step"></div><div class="step on"></div></div></div>
+        <div class="lane-row"><div class="lane-left"><button type="button" class="lane-mute"></button><div class="lane-label-wrap"><span class="lane-label">Low Perc</span><div class="lane-meta">PATCH_A5</div></div></div><div class="lane-nudge"><button>‹</button><button>›</button></div><div class="step-grid"><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div></div></div>
+        <div class="lane-row"><div class="lane-left"><button type="button" class="lane-mute"></button><div class="lane-label-wrap"><span class="lane-label">Clap</span><div class="lane-meta">PATCH_A2</div></div></div><div class="lane-nudge"><button>‹</button><button>›</button></div><div class="step-grid"><div class="step"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step"></div><div class="step on"></div></div></div>
+        <div class="lane-row"><div class="lane-left"><button type="button" class="lane-mute"></button><div class="lane-label-wrap"><span class="lane-label">Chord</span><div class="lane-meta">PATCH_A3</div></div></div><div class="lane-nudge"><button>‹</button><button>›</button></div><div class="step-grid"><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step on"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step"></div><div class="step on"></div></div></div>
+        <div class="lane-row"><div class="lane-left"><button type="button" class="lane-mute"></button><div class="lane-label-wrap"><span class="lane-label">Bass</span><div class="lane-meta">PATCH_A4</div></div></div><div class="lane-nudge"><button>‹</button><button>›</button></div><div class="step-grid"><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div></div></div>
+        <div class="lane-row"><div class="lane-left"><button type="button" class="lane-mute"></button><div class="lane-label-wrap"><span class="lane-label">Sub Perc</span><div class="lane-meta">PATCH_A8</div></div></div><div class="lane-nudge"><button>‹</button><button>›</button></div><div class="step-grid"><div class="step"></div><div class="step on"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step on"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step"></div><div class="step on"></div><div class="step"></div><div class="step on"></div><div class="step on"></div></div></div>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="title">Instrument Controls</span>
+        <div class="badge"><span class="dot"></span><span>DSP RACK</span></div>
+      </div>
+      <div class="instrument-panel">
+        <div class="track-title">Kick</div>
+        <div class="track-sub">INSTRUMENT CONTROLS</div>
+        <div class="knobs instrument-panel .knobs">
+          <div class="knob-wrap"><div class="knob-body"><div class="knob-indicator"></div></div><span class="knob-label">Decay</span></div>
+          <div class="knob-wrap"><div class="knob-body"><div class="knob-indicator" style="transform:rotate(20deg);"></div></div><span class="knob-label">Tone</span></div>
+          <div class="knob-wrap"><div class="knob-body"><div class="knob-indicator" style="transform:rotate(50deg);"></div></div><span class="knob-label">Noise</span></div>
+          <div class="knob-wrap"><div class="knob-body"><div class="knob-indicator" style="transform:rotate(-30deg);"></div></div><span class="knob-label">HPF</span></div>
+          <div class="knob-wrap"><div class="knob-body"><div class="knob-indicator" style="transform:rotate(-60deg);"></div></div><span class="knob-label">Ring</span></div>
+          <div class="knob-wrap"><div class="knob-body"><div class="knob-indicator"></div></div><span class="knob-label">Stereo</span></div>
+        </div>
+        <div class="waveform">
+          <span style="height:25%"></span><span style="height:40%"></span><span style="height:18%"></span><span style="height:55%"></span><span style="height:30%"></span><span style="height:45%"></span><span style="height:22%"></span><span style="height:60%"></span><span style="height:35%"></span><span style="height:50%"></span><span style="height:28%"></span><span style="height:42%"></span><span style="height:20%"></span><span style="height:38%"></span><span style="height:48%"></span><span style="height:32%"></span><span style="height:44%"></span><span style="height:26%"></span><span style="height:52%"></span><span style="height:36%"></span><span style="height:46%"></span><span style="height:24%"></span><span style="height:41%"></span><span style="height:29%"></span><span style="height:55%"></span>
+        </div>
+      </div>
+      <div class="global-oversample">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><span class="label">Global Oversampling</span><span class="value">x4 MODE</span></div>
+        <div class="knobs global-oversample .knobs" style="display:flex;gap:24px;">
+          <div class="knob-wrap"><div class="knob-body" style="width:40px;height:40px;"><div class="knob-indicator" style="transform:rotate(-90deg);"></div></div><span class="knob-label">Sample</span></div>
+          <div class="knob-wrap"><div class="knob-body" style="width:40px;height:40px;"><div class="knob-indicator" style="transform:rotate(45deg);"></div></div><span class="knob-label">Bits</span></div>
+          <div class="knob-wrap"><div class="knob-body" style="width:40px;height:40px;"><div class="knob-indicator"></div></div><span class="knob-label">Drive</span></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ==================== MASTER EXPANDED (optional: show/hide for design ref) ==================== -->
+  <div class="master-expanded" style="display:none;">
+    <div class="master-left">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;"><span class="label">Main Volume</span><span class="db">+1.2 db</span></div>
+        <div class="fader-wrap">
+          <div class="fader-track"><div class="fader-cap"></div></div>
+          <div class="oscilloscope">
+            <span class="osc-label">Oscilloscope_Ch_1/2</span>
+            <div class="osc-name">MASTER_DRY_WET_OUT</div>
+            <div class="osc-bars">
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="master-center">
+      <span class="label">Processing Bus</span>
+      <div class="cards">
+        <div class="fx-card"><div class="fx-head"><span>Saturate</span><div class="power">⏻</div></div><div style="width:64px;height:64px;margin:0 auto;border-radius:50%;background:#2a2a2a;border:1px solid #3a3a3a;"></div><div style="margin-top:16px;display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.4);">DRY</div><div class="wet-bar"><div class="wet-fill"></div></div></div>
+        <div class="fx-card"><div class="fx-head"><span>Limit</span><div class="power">⏻</div></div><div style="width:64px;height:64px;margin:0 auto;border-radius:50%;background:#2a2a2a;border:1px solid #3a3a3a;"></div><div class="wet-bar"><div class="wet-fill"></div></div></div>
+        <div class="fx-card"><div class="fx-head"><span>Filter</span><div class="power">⏻</div></div><div style="width:64px;height:64px;margin:0 auto;border-radius:50%;background:#2a2a2a;border:1px solid #3a3a3a;"></div><div class="wet-bar"><div class="wet-fill"></div></div></div>
+        <div class="fx-card"><div class="fx-head"><span>Phase</span><div class="power">⏻</div></div><div style="width:64px;height:64px;margin:0 auto;border-radius:50%;background:#2a2a2a;border:1px solid #3a3a3a;"></div><div class="wet-bar"><div class="wet-fill"></div></div></div>
+      </div>
+    </div>
+    <div class="master-right">
+      <span class="label">Session Control</span>
+      <div class="transport">
+        <button type="button">↻</button>
+        <button type="button">■</button>
+        <button type="button" class="play">▶</button>
+      </div>
+      <div class="transport-clk">TRANSPORT_CLK</div>
+      <div class="midi-section">
+        <span class="label">MIDI</span>
+        <button type="button" class="btn-midi">Enable MIDI</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== FOOTER DOCK ==================== -->
+  <div class="dock">
+    <div class="dock-meter"><div class="dock-meter-fill"></div></div>
+    <div class="dock-left">
+      <span class="label">STEREO MASTER OUTPUT</span>
+      <div class="dock-status">
+        <div class="item"><span class="dot rec"></span><span class="txt">REC</span></div>
+        <div class="item"><span class="dot sync"></span><span class="txt">SYNC_LOCKED</span></div>
+      </div>
+    </div>
+    <div class="dock-center">
+      <button type="button">↻</button>
+      <button type="button">■</button>
+      <button type="button" class="play">▶</button>
+      <div class="bpm">132.00 BPM</div>
+    </div>
+    <div class="dock-mini-fx">
+      <span class="label">MINI-FX</span>
+      <div class="controls">
+        <div class="dock-gr"><div class="dock-gr-fill"></div></div>
+        <div class="dock-knob-small"></div>
+        <span style="font-size:7px;color:rgba(255,255,255,0.25);">Drive</span>
+        <span style="font-size:11px;font-family:JetBrains Mono,monospace;color:rgba(255,255,255,0.8);">+0.0dB</span>
+        <button style="width:20px;height:20px;border-radius:4px;border:1px solid #1F2128;font-size:9px;font-family:JetBrains Mono,monospace;color:rgba(255,255,255,0.3);">R</button>
+        <div style="width:48px;height:6px;background:#1F2128;border-radius:9999px;overflow:hidden;"><div style="width:50%;height:100%;background:rgba(0,210,255,0.7);border-radius:9999px;"></div></div>
+      </div>
+    </div>
+    <div class="dock-right">
+      <button type="button" class="btn-export">↗ EXPORT</button>
+      <button type="button" class="btn-expand" aria-label="Expand">↑</button>
+    </div>
+  </div>
+</body>
+</html>

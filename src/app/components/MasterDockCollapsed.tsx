@@ -255,6 +255,30 @@ export function MasterDockCollapsed({
     if (!bpmFocused) setBpmInput(String(bpm));
   }, [bpm, bpmFocused]);
 
+  const showRenderedHtml = useCallback(() => {
+    const raw = document.documentElement.outerHTML;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(
+      "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Rendered HTML (1:1)</title><style>body{font-family:monospace;font-size:12px;line-height:1.4;margin:12px;white-space:pre-wrap;word-break:break-all;background:#1a1a1a;color:#e0e0e0;}</style></head><body><pre id=\"html\"></pre></body></html>"
+    );
+    win.document.close();
+    win.document.getElementById("html")!.textContent = raw;
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "H" || e.key === "h") {
+        const target = e.target as HTMLElement;
+        if (target.closest("input") || target.closest("textarea") || target.closest("[contenteditable]")) return;
+        e.preventDefault();
+        showRenderedHtml();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showRenderedHtml]);
+
   const commitBpm = () => {
     const n = parseFloat(bpmInput);
     if (!Number.isNaN(n) && n >= 20 && n <= 300) onBpmChange(n);
@@ -386,11 +410,18 @@ export function MasterDockCollapsed({
           </div>
         </div>
 
-        {/* Export + Expand/Collapse (Right) */}
+        {/* Export + Debug HTML + Expand/Collapse (Right) */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <button className="flex items-center gap-2 px-3 h-8 rounded border border-[#E66000]/40 hover:border-[#E66000]/60 hover:bg-[#E66000]/10 transition-colors text-[9px] font-bold font-mono tracking-widest text-[#E66000]">
             <ExternalLink size={12} /> EXPORT
           </button>
+          <button
+            type="button"
+            onClick={showRenderedHtml}
+            className="w-9 h-9 rounded-full border border-white/20 bg-white flex items-center justify-center hover:bg-white/90 text-[#121212] shrink-0"
+            title="Show 1:1 rendered HTML (debug). Or press H."
+            aria-label="Show rendered HTML"
+          />
           <button
             onClick={isExpanded ? onCollapse : onExpand}
             className="w-9 h-9 rounded-full border border-[#1F2128] flex items-center justify-center hover:bg-white/[0.04] hover:border-white/10 transition-colors text-white/40 hover:text-white/60"
