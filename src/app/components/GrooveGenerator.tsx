@@ -1,4 +1,4 @@
-import React, { useState, createContext, useContext } from "react";
+import React, { useState, createContext, useContext, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Sparkles, 
@@ -10,8 +10,25 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { usePercuProV1Store } from "../../core/store";
-import { createInitialPatternState, type PatternState } from "../../core/patternTypes";
-import type { GrooveCandidate } from "../../core/types";
+import { createInitialPatternState, applyPatternPatch, type PatternState } from "../../core/patternTypes";
+import type { GrooveCandidate, AppState } from "../../core/types";
+
+type StoreActions = {
+  setPattern: (p: PatternState) => void;
+  applyPatternPatch: (ops: import("../../core/patternTypes").PatchOp[]) => void;
+};
+import {
+  onGrooveButtonPressed,
+  setGrooveBridge,
+  setGrooveTemplate,
+  applyGroove,
+  generatePattern,
+  mutatePatternEngine,
+  enginePatternToStorePattern,
+  storePatternToChannelStates,
+  getDefaultGrooveTemplateId,
+  exportPercuPayload,
+} from "../../core/groove";
 
 const GROOVE_PRESETS = [
   { id: "tight", name: "Studio Tight", color: "#00D2FF" },
@@ -23,6 +40,17 @@ const GROOVE_PRESETS = [
 
 const DEFAULT_SEED = 42;
 const MAX_SEED = 999999;
+
+function presetToTemplateId(presetId: string): string {
+  const map: Record<string, string> = {
+    tight: "straight",
+    swing: "ableton_16_57",
+    lazy: "warehouse_drag",
+    chaos: "broken_funk",
+    ghost: "detroit_nudge",
+  };
+  return map[presetId] ?? getDefaultGrooveTemplateId();
+}
 
 type GrooveGeneratorContextValue = {
   seed: number;
@@ -49,11 +77,122 @@ const VARIANTS = ["Detroit", "Tbilisi", "Berlin"];
 
 export function GrooveGeneratorProvider({ children }: { children: React.ReactNode }) {
   const { state, actions } = usePercuProV1Store();
+  const stateRef = useRef<AppState>(state);
+  stateRef.current = state;
   const [activePreset, setActivePreset] = useState("swing");
   const [complexity, setComplexity] = useState(45);
   const [intensity, setIntensity] = useState(60);
   const [isGenerating, setIsGenerating] = useState(false);
   const [seed, setSeed] = useState(() => state.pattern?.seed ?? DEFAULT_SEED);
+
+  useEffect(() => {
+    const act = actions as unknown as StoreActions;
+    const getState = (): AppState => stateRef.current;
+    const getGrooveParams = () => {
+      const s = getState();
+      return {
+        tempo: s.transport?.bpm ?? 120,
+        swingPct: s.pattern?.swingPct ?? 55,
+        grooveTemplateId: presetToTemplateId(activePreset),
+        grooveAmount: intensity / 100,
+      };
+    };
+    setGrooveBridge({
+      setSwing(value) {
+        const s = getState();
+        const seedVal = s.pattern ? s.pattern.seed : DEFAULT_SEED;
+        const pat = s.pattern ?? createInitialPatternState(s.transport?.bpm ?? 120, seedVal);
+        act.setPattern({ ...pat, swingPct: Math.max(50, Math.min(70, value)) });
+        const next = { ...pat, swingPct: Math.max(50, Math.min(70, value)) };
+        const ops = applyGroove(next, { ...getGrooveParams(), swingPct: next.swingPct });
+        if (ops.length) act.applyPatternPatch(ops);
+      },
+      setGrooveTemplate(id) {
+        const s = getState();
+        const pat = s.pattern;
+        if (!pat) return;
+        const ops = applyGroove(pat, { ...getGrooveParams(), grooveTemplateId: id });
+        if (ops.length) act.applyPatternPatch(ops);
+      },
+      regeneratePattern(scope, seedOverride) {
+        const s = getState();
+        const seedToUse = seedOverride ?? s.pattern?.seed ?? seed;
+        const pat = s.pattern ?? createInitialPatternState(s.transport?.bpm ?? 120, seedToUse);
+        const projectState = {
+          tempo: s.transport?.bpm ?? 120,
+          loopBars: 1,
+          stepsPerBar: 16,
+          seed: seedToUse,
+          swing: pat.swingPct ?? 55,
+          grooveTemplateId: getGrooveParams().grooveTemplateId,
+          grooveAmount: intensity / 100,
+          variationIndex: 0,
+        };
+        const channelStates = storePatternToChannelStates(pat);
+        const controls = {
+          density: pat.density ?? 0.5,
+          funkiness: complexity / 100,
+          complexity: complexity / 100,
+          fillAmount: intensity / 100,
+          chaos: Math.min(0.3, intensity / 200),
+        };
+        const enginePattern = generatePattern(projectState, channelStates, controls, scope);
+        const storePattern = enginePatternToStorePattern(
+          enginePattern,
+          projectState.tempo,
+          projectState.seed,
+          projectState.swing,
+          controls.density
+        );
+        act.setPattern(storePattern);
+        const grooveOps = applyGroove(storePattern, {
+          tempo: projectState.tempo,
+          swingPct: projectState.swing,
+          grooveTemplateId: projectState.grooveTemplateId,
+          grooveAmount: projectState.grooveAmount,
+        });
+        if (grooveOps.length) act.applyPatternPatch(grooveOps);
+      },
+      mutatePattern(_scope, mutIntensity) {
+        const s = getState();
+        const pat = s.pattern;
+        if (!pat) return;
+        const mutOps = mutatePatternEngine(pat, pat.seed ?? seed, mutIntensity);
+        const nextPattern = applyPatternPatch(pat, mutOps);
+        const grooveOps = applyGroove(nextPattern, getGrooveParams());
+        if (mutOps.length || grooveOps.length) act.applyPatternPatch([...mutOps, ...grooveOps]);
+      },
+      applyGrooveTiming() {
+        const s = getState();
+        const pat = s.pattern;
+        if (!pat) return;
+        const ops = applyGroove(pat, getGrooveParams());
+        if (ops.length) act.applyPatternPatch(ops);
+      },
+    });
+    if (typeof import.meta !== "undefined" && import.meta.env?.VITE_DEBUG_GROOVE === "1") {
+      (window as unknown as { percuExportGroove?: () => unknown }).percuExportGroove = () => {
+        const s = getState();
+        const pat = s.pattern;
+        if (!pat) return null;
+        const payload = exportPercuPayload({
+          pattern: pat,
+          tempo: s.transport?.bpm ?? 120,
+          swing: pat.swingPct,
+          grooveTemplateId: getGrooveParams().grooveTemplateId,
+          grooveAmount: getGrooveParams().grooveAmount,
+        });
+        console.log("[Percu] export", payload);
+        return payload;
+      };
+    }
+    return () => {
+      setGrooveBridge(null);
+      if (typeof import.meta !== "undefined" && import.meta.env?.VITE_DEBUG_GROOVE === "1") {
+        (window as unknown as { percuExportGroove?: () => unknown }).percuExportGroove = undefined;
+      }
+    };
+  }, [actions, activePreset, intensity, complexity, seed]);
 
   const runGenerate = (seedToUse: number) => {
     const bpm = state.transport.bpm;
@@ -71,10 +210,17 @@ export function GrooveGeneratorProvider({ children }: { children: React.ReactNod
   };
 
   const handleGenerate = () => {
+    const seedToUse = seed;
     setIsGenerating(true);
     try {
-      runGenerate(seed);
-      setSeed((s) => Math.min(MAX_SEED, s + 1));
+      onGrooveButtonPressed({
+        runCurrentBehavior: () => {
+          runGenerate(seedToUse);
+          setSeed((s) => Math.min(MAX_SEED, s + 1));
+        },
+        getSeedForThisRun: () => seedToUse,
+        isGroovePanelOpen: () => true,
+      });
     } catch (err) {
       console.warn("[GrooveGenerator] pipeline error", err);
     } finally {
@@ -195,7 +341,10 @@ export const GrooveGeneratorBar: React.FC = () => {
                 {GROOVE_PRESETS.map((p) => (
                   <button
                     key={p.id}
-                    onClick={() => setActivePreset(p.id)}
+                    onClick={() => {
+                      setActivePreset(p.id);
+                      setGrooveTemplate(presetToTemplateId(p.id));
+                    }}
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 rounded-[2px] text-[11px] font-sans font-bold text-left transition-colors",
                       activePreset === p.id ? "bg-[#E66000]/10 text-[#E66000]" : "text-white/40 hover:bg-white/05 hover:text-white/80"
