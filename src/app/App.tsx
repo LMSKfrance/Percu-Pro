@@ -16,7 +16,6 @@ import {
   Play,
   Square,
   Repeat,
-  Shuffle,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { usePercuProV1Store } from "../core/store";
@@ -209,16 +208,9 @@ export default function App() {
         <section className="flex-1 min-w-[880px] flex flex-col overflow-y-auto scrollbar-hide border-r border-[#121212]/5">
           <div className="flex items-center justify-between px-8 h-[64px] border-b border-[#121212]/5 flex-none bg-[#F2F2EB]/80 backdrop-blur-md sticky top-0 z-30">
             <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={(e) => actions.fullRandomizePattern(stateRef.current, e.shiftKey ? { unsafe: true } : undefined)}
-                className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
-              >
-                <Shuffle size={14} strokeWidth={2.5} className="text-[#121212]/50" />
-                <span className="text-[12px] font-[Inter] font-bold uppercase tracking-widest text-[#121212]/60">
-                  Pattern Sequencer
-                </span>
-              </button>
+              <span className="text-[12px] font-[Inter] font-bold uppercase tracking-widest text-[#121212]/60">
+                Pattern Sequencer
+              </span>
               <div className="w-[1px] h-3 bg-[#121212]/10" />
               <span className="text-[9px] font-mono text-[#121212]/30 font-bold uppercase tracking-widest">
                 16 STEPS_32B

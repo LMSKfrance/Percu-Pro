@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { usePercuProV1Store } from "../../core/store";
-import { createInitialPatternState, applyPatternPatch } from "../../core/patternTypes";
-import { generate } from "../../core/algorithm/generator";
+import { createInitialPatternState } from "../../core/patternTypes";
+import type { GeneratorInput } from "../../core/algorithm/generator";
+import { generateGroove } from "../../core/groove/generateGroove";
 
 const GROOVE_PRESETS = [
   { id: "tight", name: "Studio Tight", color: "#00D2FF" },
@@ -27,14 +28,30 @@ const DEFAULT_SEED = 42;
 const MIN_SEED = 0;
 const MAX_SEED = 999999;
 
-/** Map preset id to generator influence/mode for variety per city */
+/** Map preset id to generator influence (AfroFunk/AfroDisco when implied) */
 const PRESET_TO_INFLUENCE: Record<string, string[]> = {
-  tight: ["Disco"],
+  tight: [],
   swing: ["AfroFunk"],
   lazy: ["AfroDisco"],
   chaos: ["AfroFunk", "AfroDisco"],
   ghost: ["AfroFunk"],
 };
+
+/** swingPct by preset (deterministic) */
+const PRESET_TO_SWING: Record<string, number> = {
+  tight: 50,
+  swing: 55,
+  lazy: 58,
+  ghost: 54,
+  chaos: 60,
+};
+
+/** Deterministic integer hash for seed derivation */
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) >>> 0;
+  return h % 0x7fffffff;
+}
 
 export const GrooveGenerator: React.FC = () => {
   const { state, actions } = usePercuProV1Store();
@@ -46,26 +63,33 @@ export const GrooveGenerator: React.FC = () => {
 
   const runGenerate = (seedToUse: number) => {
     const bpm = state.transport.bpm;
-    // Start from a fresh base so we get a 100% new groove, not a patch on top of the old seq
-    const basePattern = createInitialPatternState(bpm, seedToUse);
-    const cityProfile = state.ui.cityProfile || "Berlin";
-    const influenceVector = PRESET_TO_INFLUENCE[activePreset] ?? ["AfroFunk"];
-    const result = generate({
-      seed: seedToUse,
-      density: complexity / 100,
-      swingPct: 50 + intensity / 2,
+    const currentPattern = state.pattern ?? createInitialPatternState(bpm, seedToUse);
+    const seed = seedToUse + hashStr(`${activePreset}-${complexity}-${intensity}`);
+
+    const density = 0.15 + (complexity / 100) * 0.7;
+    const swingPct = PRESET_TO_SWING[activePreset] ?? 55;
+    const cityProfile = state.ui.cityProfile?.trim() || "Berlin";
+    const influenceVector = PRESET_TO_INFLUENCE[activePreset] ?? [];
+    const artistLenses: string[] = [];
+    const mode = activePreset === "ghost" || activePreset === "chaos" ? "FUTURIST_FUNK" : "";
+
+    const input: GeneratorInput = {
+      seed,
+      density,
+      swingPct,
       tempoBpm: bpm,
       cityProfile,
       influenceVector,
-      artistLenses: ["Huckaby", "Surgeon"],
-      mode: "FUTURIST_FUNK",
-      currentPattern: basePattern,
-    });
-    const newPattern =
-      result.patternPatch.length > 0
-        ? applyPatternPatch(basePattern, result.patternPatch)
-        : basePattern;
-    actions.setPattern(newPattern);
+      artistLenses,
+      mode,
+      currentPattern,
+    };
+
+    const { replacePatchOps, critique, opCount, top3 } = generateGroove(input, currentPattern);
+    actions.applyPatternPatch(replacePatchOps);
+    actions.setGrooveLastCritique(critique);
+    actions.setGrooveLastAppliedCount(opCount);
+    actions.setGrooveTop3(top3);
   };
 
   const handleGenerate = () => {

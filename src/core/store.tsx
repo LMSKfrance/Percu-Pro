@@ -1,5 +1,5 @@
 import React, { useReducer, useCallback, useContext, useMemo } from "react";
-import type { AppState, TrackId, EngineId } from "./types";
+import type { AppState, TrackId, EngineId, GrooveCandidate } from "./types";
 import type { PatchOp, PatternState } from "./patternTypes";
 import { createInitialPatternState, applyPatternPatch } from "./patternTypes";
 import { buildFullRandomizeOps } from "./groove/fullRandomize";
@@ -22,6 +22,7 @@ export const initialState: AppState = {
   ui: { activeTrackId: "kick", expandedTrackId: "kick", activeEngine: "Percussion Engine", cityProfile: "Berlin" },
   transport: { bpm: initialBpm, isPlaying: false, isLooping: true },
   pattern: createInitialPatternState(initialBpm, initialSeed),
+  groove: { top3: null, lastCritique: [], lastAppliedCount: 0 },
 };
 
 type Action =
@@ -39,7 +40,10 @@ type Action =
   | { type: "setStepVelocity"; payload: { laneId: TrackId; stepIndex: number; velocity: number } }
   | { type: "setStepOn"; payload: { laneId: TrackId; stepIndex: number; velocity?: number } }
   | { type: "clearStep"; payload: { laneId: TrackId; stepIndex: number } }
-  | { type: "setStepAccent"; payload: { laneId: TrackId; stepIndex: number; accent: boolean } };
+  | { type: "setStepAccent"; payload: { laneId: TrackId; stepIndex: number; accent: boolean } }
+  | { type: "setGrooveTop3"; payload: GrooveCandidate[] | null }
+  | { type: "setGrooveLastCritique"; payload: { reason: string; message: string }[] }
+  | { type: "setGrooveLastAppliedCount"; payload: number };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -105,6 +109,18 @@ export function reducer(state: AppState, action: Action): AppState {
       }];
       return { ...state, pattern: applyPatternPatch(pattern, ops) };
     }
+    case "setGrooveTop3": {
+      const groove = state.groove ?? { top3: null, lastCritique: [], lastAppliedCount: 0 };
+      return { ...state, groove: { ...groove, top3: action.payload } };
+    }
+    case "setGrooveLastCritique": {
+      const groove = state.groove ?? { top3: null, lastCritique: [], lastAppliedCount: 0 };
+      return { ...state, groove: { ...groove, lastCritique: action.payload } };
+    }
+    case "setGrooveLastAppliedCount": {
+      const groove = state.groove ?? { top3: null, lastCritique: [], lastAppliedCount: 0 };
+      return { ...state, groove: { ...groove, lastAppliedCount: action.payload } };
+    }
     default:
       return state;
   }
@@ -130,6 +146,9 @@ type StoreValue = {
     clearStep: (laneId: TrackId, stepIndex: number) => void;
     setStepAccent: (laneId: TrackId, stepIndex: number, accent: boolean) => void;
     fullRandomizePattern: (currentState: AppState, options?: { unsafe?: boolean }) => void;
+    setGrooveTop3: (top3: GrooveCandidate[] | null) => void;
+    setGrooveLastCritique: (critique: { reason: string; message: string }[]) => void;
+    setGrooveLastAppliedCount: (count: number) => void;
   };
 };
 
@@ -168,6 +187,9 @@ export function PercuProStoreProvider({ children }: { children: React.ReactNode 
       const ops = buildFullRandomizeOps(pattern, seed, options);
       dispatch({ type: "applyPatternPatch", payload: ops });
     }, []),
+    setGrooveTop3: useCallback((top3: GrooveCandidate[] | null) => dispatch({ type: "setGrooveTop3", payload: top3 }), []),
+    setGrooveLastCritique: useCallback((critique: { reason: string; message: string }[]) => dispatch({ type: "setGrooveLastCritique", payload: critique }), []),
+    setGrooveLastAppliedCount: useCallback((count: number) => dispatch({ type: "setGrooveLastAppliedCount", payload: count }), []),
   };
 
   const value = useMemo<StoreValue>(() => ({ state, dispatch, actions }), [state, actions]);
