@@ -312,6 +312,10 @@ export default function App() {
     if (state.pattern) audioEngine.setPattern(state.pattern);
   }, [state.pattern]);
 
+  useEffect(() => {
+    audioEngine.setHiPercInstrumentState(state.ui.hiPercInstrument);
+  }, [state.ui.hiPercInstrument]);
+
   const [masterExpanded, setMasterExpanded] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const saved = localStorage.getItem(STORAGE_KEY_MASTER);

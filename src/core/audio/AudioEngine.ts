@@ -5,7 +5,7 @@
 
 import type { PatternState } from "../patternTypes";
 import type { TrackId } from "../types";
-import type { AppState } from "../types";
+import type { AppState, HiPercInstrumentState } from "../types";
 import { startScheduler, stopScheduler, type OnStepTriggerFn } from "./scheduler";
 import type { VoiceTrigger } from "./voices/types";
 import { triggerKick } from "./voices/kick";
@@ -14,6 +14,8 @@ import { createClapVoice } from "./voices/clap";
 import { createRimVoice } from "./voices/rim";
 import { createPercVoice } from "./voices/perc";
 import { triggerAcid } from "./voices/acid";
+import { VerbosDsiFmPercVoice } from "../../audio/models/voices/VerbosDsiFmPercVoice";
+import { verbosDsiFmPercModel } from "../../audio/models/instruments/verbosDsiFmPerc";
 
 const TRACK_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
 
@@ -42,6 +44,8 @@ let compressor: DynamicsCompressorNode | null = null;
 let hpf: BiquadFilterNode | null = null;
 let laneGains: Record<TrackId, GainNode> = {} as Record<TrackId, GainNode>;
 let masterFxInput: GainNode | null = null;
+
+let hiPercVerbosVoice: VerbosDsiFmPercVoice | null = null;
 
 function ensureGraph(): boolean {
   if (!ctx) return false;
@@ -99,6 +103,11 @@ function triggerStep(
   pitchSemitones: number
 ): void {
   if (!ctx) return;
+  if (laneId === "hiPerc" && hiPercVerbosVoice) {
+    const dest = laneGains[laneId];
+    if (dest) hiPercVerbosVoice.trigger(timeSec, velocity);
+    return;
+  }
   const voice = laneVoices[laneId];
   const dest = laneGains[laneId];
   if (!voice || !dest) return;
@@ -149,12 +158,64 @@ export function setPattern(_pattern: PatternState): void {
   // Scheduler reads pattern from getState() each tick; no-op here unless we throttle
 }
 
+function disposeHiPercVerbosVoice(): void {
+  if (hiPercVerbosVoice) {
+    hiPercVerbosVoice.dispose();
+    hiPercVerbosVoice = null;
+  }
+}
+
+export function setHiPercInstrumentState(config: HiPercInstrumentState | undefined): void {
+  if (!config || config.modelId !== "VERBOS_DSI_FM_PERC") {
+    disposeHiPercVerbosVoice();
+    return;
+  }
+  if (!ctx) return;
+  ensureGraph();
+  const dest = laneGains.hiPerc;
+  if (!dest) return;
+  const t = ctx.currentTime;
+  if (hiPercVerbosVoice) {
+    hiPercVerbosVoice.setParam("color", config.color, t);
+    hiPercVerbosVoice.setParam("decay", config.decay, t);
+    hiPercVerbosVoice.setParam("drive", config.drive, t);
+    hiPercVerbosVoice.setParam("ratio", config.ratio, t);
+    hiPercVerbosVoice.setParam("tone", config.tone, t);
+    hiPercVerbosVoice.setParam("feedback", config.feedback, t);
+    return;
+  }
+  disposeHiPercVerbosVoice();
+  const initial = {
+    color: config.color,
+    decay: config.decay,
+    drive: config.drive,
+    ratio: config.ratio,
+    tone: config.tone,
+    feedback: config.feedback,
+  };
+  hiPercVerbosVoice = verbosDsiFmPercModel.createVoice(ctx, dest, initial);
+  hiPercVerbosVoice.setParam("color", config.color, t);
+  hiPercVerbosVoice.setParam("decay", config.decay, t);
+  hiPercVerbosVoice.setParam("drive", config.drive, t);
+  hiPercVerbosVoice.setParam("ratio", config.ratio, t);
+  hiPercVerbosVoice.setParam("tone", config.tone, t);
+  hiPercVerbosVoice.setParam("feedback", config.feedback, t);
+}
+
+export function setHiPercVerbosParam(
+  key: "color" | "decay" | "drive" | "ratio" | "tone" | "feedback",
+  value: number
+): void {
+  if (hiPercVerbosVoice) hiPercVerbosVoice.setParam(key, value);
+}
+
 export function setIsLooping(_value: boolean): void {
   // Scheduler reads isLooping from getState()
 }
 
 export function dispose(): void {
   stop();
+  disposeHiPercVerbosVoice();
   if (ctx) {
     ctx.close();
     ctx = null;

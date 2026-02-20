@@ -23,6 +23,10 @@ export const Knob: React.FC<KnobProps> = ({
   const startY = useRef(0);
   const startValue = useRef(0);
 
+  useEffect(() => {
+    setInternalValue(value);
+  }, [value]);
+
   const rotation = ((internalValue - min) / (max - min)) * 270 - 135;
 
   const handleMouseDown = (e: React.MouseEvent) => {

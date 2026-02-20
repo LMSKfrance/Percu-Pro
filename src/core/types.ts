@@ -22,6 +22,18 @@ export interface TransportState {
   isLooping: boolean;
 }
 
+/** Hi Perc lane instrument: model + Verbos/DSI FM macro/hidden params (backward-compatible addition) */
+export interface HiPercInstrumentState {
+  modelId: "default" | "VERBOS_DSI_FM_PERC";
+  presetId: string | null;
+  color: number;
+  decay: number;
+  drive: number;
+  ratio: number;
+  tone: number;
+  feedback: number;
+}
+
 export interface UiState {
   activeTrackId: TrackId;
   expandedTrackId: TrackId | null;
@@ -30,6 +42,8 @@ export interface UiState {
   cityProfile: string;
   /** Per-lane mute (power off); when true, instrument is silent but triggers stay visible */
   laneMuted: Partial<Record<TrackId, boolean>>;
+  /** Hi Perc (PERC1) instrument model + macros (optional; when absent, lane uses default perc) */
+  hiPercInstrument?: HiPercInstrumentState;
 }
 
 export interface GrooveCandidate {
