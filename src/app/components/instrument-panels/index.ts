@@ -1,0 +1,9 @@
+export { INSTRUMENT_LABELS } from "./constants";
+export { NoisePanel } from "./NoisePanel";
+export { HiPercPanel } from "./HiPercPanel";
+export { LowPercPanel } from "./LowPercPanel";
+export { ClapPanel } from "./ClapPanel";
+export { ChordPanel } from "./ChordPanel";
+export { BassPanel } from "./BassPanel";
+export { SubPercPanel } from "./SubPercPanel";
+export { KickPanel } from "./KickPanel";
