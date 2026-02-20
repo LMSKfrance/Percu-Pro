@@ -84,7 +84,7 @@ export class VerbosDsiFmPercVoice {
 
     this.postDrive = ctx.createWaveShaper();
     this.postDrive.curve = makeFoldShaper(2048, 0.25);
-    this.postDrive.oversample = "2x";
+    this.postDrive.oversample = "none"; // CPU-safe: preDrive stays 2x
 
     this.amp = ctx.createGain();
     this.amp.gain.value = 0;
