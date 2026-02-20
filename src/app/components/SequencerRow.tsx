@@ -7,6 +7,79 @@ import type { TrackId } from "../../core/types";
 
 const DEFAULT_STEPS = new Array(16).fill(false);
 const DEFAULT_VELS = new Array(16).fill(100);
+const DEFAULT_PITCH_STEPS = new Array(16).fill(0);
+
+function clampPitch(v: number): number {
+  return Math.max(-12, Math.min(12, Math.round(v)));
+}
+
+const PITCH_MIN = -12;
+const PITCH_MAX = 12;
+
+interface PitchDialColumnProps {
+  index: number;
+  velocity: number;
+  pitch: number;
+  onPitchDelta: (delta: number) => void;
+  onPitchReset: () => void;
+}
+
+function PitchDialColumn({ index, velocity, pitch, onPitchDelta, onPitchReset }: PitchDialColumnProps) {
+  const startYRef = React.useRef(0);
+  const startPitchRef = React.useRef(0);
+
+  const handleDialMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    startYRef.current = e.clientY;
+    startPitchRef.current = pitch;
+    const onMove = (ev: MouseEvent) => {
+      const deltaY = startYRef.current - ev.clientY;
+      const fine = ev.shiftKey;
+      const step = fine ? 0.05 : 0.2;
+      const delta = deltaY * step;
+      onPitchDelta(delta);
+      startYRef.current = ev.clientY;
+      startPitchRef.current = clampPitch(startPitchRef.current + delta);
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  const rotation = ((pitch - PITCH_MIN) / (PITCH_MAX - PITCH_MIN)) * 270 - 135;
+
+  return (
+    <div className="flex-1 min-w-0 flex flex-col items-stretch gap-0.5 min-h-0">
+      <div className="w-full h-[96px] bg-[#121212]/18 rounded-[2px] relative overflow-hidden flex-shrink-0">
+        <div
+          className="absolute bottom-0 left-0 right-0 bg-[#E66000] rounded-[2px] transition-[height] duration-100"
+          style={{ height: `${Math.max(4, velocity)}%` }}
+        />
+      </div>
+      <span className="text-[7px] font-mono font-bold text-[#121212]/30 tabular-nums text-center flex-none">{index + 1}</span>
+      <div
+        className="relative flex-none w-5 h-5 rounded-full border border-[#121212]/25 bg-[#121212]/08 flex items-center justify-center cursor-ns-resize select-none mx-auto"
+        onMouseDown={handleDialMouseDown}
+        onDoubleClick={(e) => { e.preventDefault(); onPitchReset(); }}
+        role="slider"
+        aria-valuenow={pitch}
+        aria-valuemin={PITCH_MIN}
+        aria-valuemax={PITCH_MAX}
+      >
+        <div
+          className="absolute left-1/2 top-1/2 w-[1.5px] h-[5px] bg-[#121212] rounded-full origin-bottom"
+          style={{
+            transform: `translate(-50%, -100%) rotate(${rotation}deg)`,
+            opacity: pitch !== 0 ? 0.6 : 0.35,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
 
 interface SequencerRowProps {
   trackId?: TrackId;
@@ -50,6 +123,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
 }) => {
   const [localSteps, setLocalSteps] = useState<boolean[]>(DEFAULT_STEPS);
   const [localVelocities, setLocalVelocities] = useState<number[]>(DEFAULT_VELS);
+  const [pitchSteps, setPitchSteps] = useState<number[]>(DEFAULT_PITCH_STEPS);
 
   const isControlled = controlledSteps != null && controlledVelocities != null;
   const activeSteps = isControlled ? controlledSteps : localSteps;
@@ -89,11 +163,27 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
     onToggleExpand?.();
   };
 
+  const handlePitchChange = (index: number, delta: number) => {
+    setPitchSteps((prev) => {
+      const next = [...prev];
+      next[index] = clampPitch((prev[index] ?? 0) + delta);
+      return next;
+    });
+  };
+
+  const handlePitchReset = (index: number) => {
+    setPitchSteps((prev) => {
+      const next = [...prev];
+      next[index] = 0;
+      return next;
+    });
+  };
+
   return (
     <div 
       className={cn(
         "flex flex-col border-b border-[#121212]/5 overflow-hidden transition-all duration-400 ease-in-out relative",
-        isExpanded ? "bg-[#121212]/[0.03] h-[196px]" : "bg-transparent h-[72px]",
+        isExpanded ? "bg-[#121212]/[0.03] min-h-[268px]" : "bg-transparent h-[72px]",
         isActive && "bg-[#E8E4DC]"
       )}
     >
@@ -216,25 +306,27 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
               </div>
             </div>
 
-            {/* Velocity lane: title then bars at max height down to bottom */}
-            <div className="flex flex-col gap-1.5 flex-1 min-h-[56px] min-w-0 overflow-hidden">
-              <div className="flex items-center gap-2 text-[#121212]/50 flex-none">
-                <Shuffle size={14} strokeWidth={2.5} />
-                <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Velocity</span>
+            {/* Velocity + Pitch: ~50% of expanded content; taller bars + per-step pitch dials */}
+            <div className="flex flex-col gap-1.5 flex-1 min-h-[98px] min-w-0 overflow-hidden">
+              <div className="flex items-center gap-4 flex-none">
+                <div className="flex items-center gap-2 text-[#121212]/50">
+                  <Shuffle size={14} strokeWidth={2.5} />
+                  <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Velocity</span>
+                </div>
+                <span className="text-[8px] font-mono text-[#121212]/25 tracking-wider uppercase">Pitch</span>
               </div>
-              <div className="flex items-end gap-6 flex-1 min-h-0 min-w-0">
+              <div className="flex items-start gap-6 flex-none min-w-0">
                 <div className="flex-none w-[340px]" aria-hidden />
-                <div className="flex flex-1 gap-1.5 min-w-[500px] min-h-[44px] h-full">
+                <div className="flex flex-1 gap-1.5 min-w-[500px] min-h-[120px]">
                   {[...Array(16)].map((_, i) => (
-                    <div key={i} className="flex-1 min-w-0 flex flex-col items-stretch gap-0.5 min-h-0 flex-1">
-                      <div className="w-full flex-1 min-h-[36px] bg-[#121212]/18 rounded-[2px] relative overflow-hidden">
-                        <div 
-                          className="absolute bottom-0 left-0 right-0 bg-[#E66000] rounded-[2px] transition-[height] duration-100"
-                          style={{ height: `${Math.max(4, velocities[i] ?? 100)}%` }}
-                        />
-                      </div>
-                      <span className="text-[7px] font-mono font-bold text-[#121212]/30 tabular-nums text-center flex-none">{i + 1}</span>
-                    </div>
+                    <PitchDialColumn
+                      key={i}
+                      index={i}
+                      velocity={velocities[i] ?? 100}
+                      pitch={pitchSteps[i] ?? 0}
+                      onPitchDelta={(delta) => handlePitchChange(i, delta)}
+                      onPitchReset={() => handlePitchReset(i)}
+                    />
                   ))}
                 </div>
               </div>
