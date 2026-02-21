@@ -22,9 +22,9 @@ export interface TransportState {
   isLooping: boolean;
 }
 
-/** Hi Perc lane instrument: model + Verbos/DSI FM macro/hidden params (backward-compatible addition) */
+/** Hi Perc lane instrument: model + macro/hidden params (backward-compatible addition) */
 export interface HiPercInstrumentState {
-  modelId: "default" | "VERBOS_DSI_FM_PERC";
+  modelId: "default" | "VERBOS_DSI_FM_PERC" | "FM_MD_KICK" | "FM_MD_SNARE" | "FM_MD_HAT";
   presetId: string | null;
   color: number;
   decay: number;
@@ -32,6 +32,12 @@ export interface HiPercInstrumentState {
   ratio: number;
   tone: number;
   feedback: number;
+  /** FM MD model preset id */
+  fmMdPresetId?: string | null;
+  /** FM MD macros 0..1 (interpretation depends on model: kick=pitch/punch/decay, snare=noiseMix/tone/snap, hat=decay/tone/bright) */
+  fmMdMacro1?: number;
+  fmMdMacro2?: number;
+  fmMdMacro3?: number;
 }
 
 export interface UiState {

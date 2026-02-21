@@ -27,6 +27,10 @@ const defaultHiPercInstrument: HiPercInstrumentState = {
   ratio: 2,
   tone: 0.6,
   feedback: 0.08,
+  fmMdPresetId: null,
+  fmMdMacro1: 0.5,
+  fmMdMacro2: 0.5,
+  fmMdMacro3: 0.5,
 };
 
 export const initialState: AppState = {
@@ -64,10 +68,12 @@ type Action =
   | { type: "setGrooveTop3"; payload: GrooveCandidate[] | null }
   | { type: "setGrooveLastCritique"; payload: { reason: string; message: string }[] }
   | { type: "setGrooveLastAppliedCount"; payload: number }
-  | { type: "setHiPercModel"; payload: "default" | "VERBOS_DSI_FM_PERC" }
+  | { type: "setHiPercModel"; payload: HiPercInstrumentState["modelId"] }
   | { type: "setHiPercPreset"; payload: string | null }
   | { type: "setHiPercMacro"; payload: { color?: number; decay?: number; drive?: number } }
-  | { type: "setHiPercInstrumentFull"; payload: HiPercInstrumentState };
+  | { type: "setHiPercInstrumentFull"; payload: HiPercInstrumentState }
+  | { type: "setHiPercFmMdMacro"; payload: { m1?: number; m2?: number; m3?: number } }
+  | { type: "setHiPercFmMdPreset"; payload: { presetId: string | null; m1: number; m2: number; m3: number } };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -203,6 +209,39 @@ export function reducer(state: AppState, action: Action): AppState {
         ui: { ...state.ui, hiPercInstrument: action.payload },
       };
     }
+    case "setHiPercFmMdMacro": {
+      const prev = state.ui.hiPercInstrument ?? defaultHiPercInstrument;
+      const { m1, m2, m3 } = action.payload;
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          hiPercInstrument: {
+            ...prev,
+            ...(m1 !== undefined && { fmMdMacro1: m1 }),
+            ...(m2 !== undefined && { fmMdMacro2: m2 }),
+            ...(m3 !== undefined && { fmMdMacro3: m3 }),
+          },
+        },
+      };
+    }
+    case "setHiPercFmMdPreset": {
+      const prev = state.ui.hiPercInstrument ?? defaultHiPercInstrument;
+      const { presetId, m1, m2, m3 } = action.payload;
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          hiPercInstrument: {
+            ...prev,
+            fmMdPresetId: presetId,
+            fmMdMacro1: m1,
+            fmMdMacro2: m2,
+            fmMdMacro3: m3,
+          },
+        },
+      };
+    }
     default:
       return state;
   }
@@ -233,10 +272,12 @@ type StoreValue = {
     setGrooveTop3: (top3: GrooveCandidate[] | null) => void;
     setGrooveLastCritique: (critique: { reason: string; message: string }[]) => void;
     setGrooveLastAppliedCount: (count: number) => void;
-    setHiPercModel: (modelId: "default" | "VERBOS_DSI_FM_PERC") => void;
+    setHiPercModel: (modelId: HiPercInstrumentState["modelId"]) => void;
     setHiPercPreset: (presetId: string | null) => void;
     setHiPercMacro: (payload: { color?: number; decay?: number; drive?: number }) => void;
     setHiPercInstrumentFull: (payload: HiPercInstrumentState) => void;
+    setHiPercFmMdMacro: (payload: { m1?: number; m2?: number; m3?: number }) => void;
+    setHiPercFmMdPreset: (payload: { presetId: string | null; m1: number; m2: number; m3: number }) => void;
   };
 };
 
@@ -286,6 +327,8 @@ export function PercuProStoreProvider({ children }: { children: React.ReactNode 
     setHiPercPreset: useCallback((presetId: string | null) => dispatch({ type: "setHiPercPreset", payload: presetId }), []),
     setHiPercMacro: useCallback((payload: { color?: number; decay?: number; drive?: number }) => dispatch({ type: "setHiPercMacro", payload }), []),
     setHiPercInstrumentFull: useCallback((payload: HiPercInstrumentState) => dispatch({ type: "setHiPercInstrumentFull", payload }), []),
+    setHiPercFmMdMacro: useCallback((payload: { m1?: number; m2?: number; m3?: number }) => dispatch({ type: "setHiPercFmMdMacro", payload }), []),
+    setHiPercFmMdPreset: useCallback((payload: { presetId: string | null; m1: number; m2: number; m3: number }) => dispatch({ type: "setHiPercFmMdPreset", payload }), []),
   };
 
   const value = useMemo<StoreValue>(() => ({ state, dispatch, actions }), [state, actions]);

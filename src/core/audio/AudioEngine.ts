@@ -15,7 +15,17 @@ import { createRimVoice } from "./voices/rim";
 import { createPercVoice } from "./voices/perc";
 import { triggerAcid } from "./voices/acid";
 import { VerbosDsiFmPercVoice } from "../../audio/models/voices/VerbosDsiFmPercVoice";
+import { FmDrumVoice } from "../../audio/models/voices/FmDrumVoice";
+import { FmSnareVoice } from "../../audio/models/voices/FmSnareVoice";
 import { verbosDsiFmPercModel } from "../../audio/models/instruments/verbosDsiFmPerc";
+import {
+  fmMdKickModel,
+  fmMdKickApplyMacros,
+  fmMdSnareModel,
+  fmMdSnareApplyMacros,
+  fmMdHatModel,
+  fmMdHatApplyMacros,
+} from "../../audio/models/instruments";
 
 const TRACK_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
 
@@ -46,6 +56,7 @@ let laneGains: Record<TrackId, GainNode> = {} as Record<TrackId, GainNode>;
 let masterFxInput: GainNode | null = null;
 
 let hiPercVerbosVoice: VerbosDsiFmPercVoice | null = null;
+let hiPercFmMdVoice: FmDrumVoice | FmSnareVoice | null = null;
 
 function ensureGraph(): boolean {
   if (!ctx) return false;
@@ -103,6 +114,10 @@ function triggerStep(
   pitchSemitones: number
 ): void {
   if (!ctx) return;
+  if (laneId === "hiPerc" && hiPercFmMdVoice) {
+    hiPercFmMdVoice.trigger(timeSec, velocity);
+    return;
+  }
   if (laneId === "hiPerc" && hiPercVerbosVoice) {
     const dest = laneGains[laneId];
     if (dest) hiPercVerbosVoice.trigger(timeSec, velocity);
@@ -165,11 +180,64 @@ function disposeHiPercVerbosVoice(): void {
   }
 }
 
+function disposeHiPercFmMdVoice(): void {
+  if (hiPercFmMdVoice) {
+    hiPercFmMdVoice.dispose();
+    hiPercFmMdVoice = null;
+  }
+}
+
 export function setHiPercInstrumentState(config: HiPercInstrumentState | undefined): void {
-  if (!config || config.modelId !== "VERBOS_DSI_FM_PERC") {
+  if (!config) {
+    disposeHiPercVerbosVoice();
+    disposeHiPercFmMdVoice();
+    return;
+  }
+
+  const m1 = config.fmMdMacro1 ?? 0.5;
+  const m2 = config.fmMdMacro2 ?? 0.5;
+  const m3 = config.fmMdMacro3 ?? 0.5;
+
+  if (config.modelId === "FM_MD_KICK" || config.modelId === "FM_MD_SNARE" || config.modelId === "FM_MD_HAT") {
+    disposeHiPercVerbosVoice();
+    if (!ctx) return;
+    ensureGraph();
+    const dest = laneGains.hiPerc;
+    if (!dest) return;
+
+    if (hiPercFmMdVoice && config.modelId === "FM_MD_KICK") {
+      fmMdKickApplyMacros(hiPercFmMdVoice as FmDrumVoice, m1, m2, m3);
+      return;
+    }
+    if (hiPercFmMdVoice && config.modelId === "FM_MD_SNARE") {
+      fmMdSnareApplyMacros(hiPercFmMdVoice as FmSnareVoice, m1, m2, m3);
+      return;
+    }
+    if (hiPercFmMdVoice && config.modelId === "FM_MD_HAT") {
+      fmMdHatApplyMacros(hiPercFmMdVoice as FmDrumVoice, m1, m2, m3);
+      return;
+    }
+
+    disposeHiPercFmMdVoice();
+    if (config.modelId === "FM_MD_KICK") {
+      hiPercFmMdVoice = fmMdKickModel.createVoice(ctx, dest, { pitch: m1, punch: m2, decay: m3 } as import("../../audio/models/instruments/fmMdKick").FmMdKickPreset);
+      fmMdKickApplyMacros(hiPercFmMdVoice as FmDrumVoice, m1, m2, m3);
+    } else if (config.modelId === "FM_MD_SNARE") {
+      hiPercFmMdVoice = fmMdSnareModel.createVoice(ctx, dest, { noiseMix: m1, tone: m2, snap: m3 } as import("../../audio/models/instruments/fmMdSnare").FmMdSnarePreset, sharedNoise);
+      fmMdSnareApplyMacros(hiPercFmMdVoice as FmSnareVoice, m1, m2, m3);
+    } else {
+      hiPercFmMdVoice = fmMdHatModel.createVoice(ctx, dest, { decay: m1, tone: m2, bright: m3 } as import("../../audio/models/instruments/fmMdHat").FmMdHatPreset);
+      fmMdHatApplyMacros(hiPercFmMdVoice as FmDrumVoice, m1, m2, m3);
+    }
+    return;
+  }
+
+  disposeHiPercFmMdVoice();
+  if (config.modelId !== "VERBOS_DSI_FM_PERC") {
     disposeHiPercVerbosVoice();
     return;
   }
+
   if (!ctx) return;
   ensureGraph();
   const dest = laneGains.hiPerc;
@@ -216,6 +284,7 @@ export function setIsLooping(_value: boolean): void {
 export function dispose(): void {
   stop();
   disposeHiPercVerbosVoice();
+  disposeHiPercFmMdVoice();
   if (ctx) {
     ctx.close();
     ctx = null;
