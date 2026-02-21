@@ -16,6 +16,8 @@ import {
   Play,
   Square,
   Repeat,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { usePercuProV1Store } from "../core/store";
@@ -324,6 +326,8 @@ export default function App() {
     return false;
   });
 
+  const [instrumentPanelExpanded, setInstrumentPanelExpanded] = useState(true);
+
   const footerRef = useRef<HTMLDivElement>(null);
 
   const scrollFooterIntoView = useCallback(() => {
@@ -353,7 +357,70 @@ export default function App() {
       </GrooveGeneratorProvider>
 
       <main className="flex-1 flex overflow-hidden min-h-0">
-        <section className="flex-1 min-w-[880px] flex flex-col overflow-y-auto scrollbar-hide border-r border-[#121212]/5">
+        {/* Instrument Controls: left-aligned, sticky, 24% narrower when expanded */}
+        <aside
+          className={`flex-none flex flex-col overflow-y-auto border-r border-white/[0.03] transition-[width] duration-200 ease-out shrink-0 bg-[#181818] sticky left-0 top-0 self-stretch z-20 ${
+            instrumentPanelExpanded ? "w-[425px]" : "w-[72px]"
+          }`}
+        >
+          <div className="flex items-center justify-between h-[64px] border-b border-white/[0.03] flex-none sticky top-0 z-30 bg-[#181818]/90 backdrop-blur-md shrink-0">
+            {instrumentPanelExpanded ? (
+              <>
+                <span className="text-[11px] font-sans font-bold uppercase tracking-widest text-white/40 px-6">
+                  Instrument Controls
+                </span>
+                <div className="flex items-center gap-3 pr-6">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#00D2FF]/40 animate-pulse" />
+                  <span className="text-[8px] font-mono text-white/20 font-bold uppercase tracking-[0.2em]">DSP RACK</span>
+                  <button
+                    type="button"
+                    onClick={() => setInstrumentPanelExpanded(false)}
+                    className="p-1.5 rounded-[4px] text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors"
+                    title="Collapse panel"
+                    aria-label="Collapse instrument panel"
+                  >
+                    <ChevronRight size={18} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center w-full py-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInstrumentPanelExpanded(true)}
+                  className="p-1.5 rounded-[4px] text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors"
+                  title="Expand panel"
+                  aria-label="Expand instrument panel"
+                >
+                  <ChevronLeft size={18} strokeWidth={2.5} />
+                </button>
+                <span className="text-[8px] font-mono text-white/30 font-bold uppercase tracking-widest writing-mode-vertical" style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}>
+                  DSP
+                </span>
+              </div>
+            )}
+          </div>
+
+          <InstrumentControlsPanel selectedTrackId={activeTrackId} collapsed={!instrumentPanelExpanded} />
+
+          {instrumentPanelExpanded && (
+            <div className="mt-auto p-6 border-t border-white/[0.03] bg-white/[0.01]">
+              <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-mono font-bold text-white/10 uppercase tracking-widest">Global Oversampling</span>
+                  <span className="text-[10px] font-mono font-bold text-[#00D2FF]/60">x4 MODE</span>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1"><Knob label="Sample" size={36} value={20} /></div>
+                  <div className="flex-1"><Knob label="Bits" size={36} value={80} /></div>
+                  <div className="flex-1"><Knob label="Drive" size={36} value={0} /></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </aside>
+
+        <section className="flex-1 min-w-0 flex flex-col overflow-y-auto scrollbar-hide border-r border-[#121212]/5">
           <div className="flex items-center justify-between px-8 h-[64px] border-b border-[#121212]/5 flex-none bg-[#F2F2EB]/80 backdrop-blur-md sticky top-0 z-30">
             <div className="flex items-center gap-4">
               <span className="text-[12px] font-sans font-bold uppercase tracking-widest text-[#121212]/60">
@@ -421,34 +488,6 @@ export default function App() {
             })}
           </div>
         </section>
-
-        <aside className="w-[560px] flex-none bg-[#181818] flex flex-col overflow-y-auto border-l border-white/[0.03]">
-          <div className="flex items-center justify-between px-6 h-[64px] border-b border-white/[0.03] flex-none sticky top-0 z-30 bg-[#181818]/90 backdrop-blur-md">
-            <span className="text-[11px] font-sans font-bold uppercase tracking-widest text-white/40">
-              Instrument Controls
-            </span>
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#00D2FF]/40 animate-pulse" />
-              <span className="text-[8px] font-mono text-white/20 font-bold uppercase tracking-[0.2em]">DSP RACK</span>
-            </div>
-          </div>
-
-          <InstrumentControlsPanel selectedTrackId={activeTrackId} />
-
-          <div className="mt-auto p-8 border-t border-white/[0.03] bg-white/[0.01]">
-            <div className="flex flex-col gap-6">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-mono font-bold text-white/10 uppercase tracking-widest">Global Oversampling</span>
-                <span className="text-[10px] font-mono font-bold text-[#00D2FF]/60">x4 MODE</span>
-              </div>
-              <div className="flex gap-6">
-                <div className="flex-1"><Knob label="Sample" size={40} value={20} /></div>
-                <div className="flex-1"><Knob label="Bits" size={40} value={80} /></div>
-                <div className="flex-1"><Knob label="Drive" size={40} value={0} /></div>
-              </div>
-            </div>
-          </div>
-        </aside>
       </main>
 
       <div ref={footerRef} className="flex-none" aria-hidden />

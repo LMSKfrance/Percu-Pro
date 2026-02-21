@@ -21,14 +21,17 @@ import {
   SUB_PERC_PRESETS as SUB_PERC_PRESETS_DATA,
 } from "./instrument-panels/instrumentPresets";
 import { InstrumentPresetDropdown, type InstrumentPresetOption } from "./InstrumentPresetDropdown";
+import { Knob } from "./Knob";
 import { usePercuProV1Store } from "../../core/store";
 import { verbosDsiFmPercModel } from "../../audio/models/instruments/verbosDsiFmPerc";
 import { fmMdKickModel } from "../../audio/models/instruments/fmMdKick";
 import { fmMdSnareModel } from "../../audio/models/instruments/fmMdSnare";
 import { fmMdHatModel } from "../../audio/models/instruments/fmMdHat";
 
-interface InstrumentControlsPanelProps {
+export interface InstrumentControlsPanelProps {
   selectedTrackId: TrackId | null;
+  /** When true, show only primary controls (no preset dropdown, no full panel). */
+  collapsed?: boolean;
 }
 
 const PANEL_BY_TRACK: Record<TrackId, React.FC> = {
@@ -43,6 +46,98 @@ const PANEL_BY_TRACK: Record<TrackId, React.FC> = {
 };
 
 const ACCENT = "#E66000";
+
+/** Minimized view: only primary controls (2 knobs per instrument), no preset. */
+function InstrumentControlsPanelPrimaries({ selectedTrackId }: { selectedTrackId: TrackId }) {
+  const { state, actions } = usePercuProV1Store();
+  const size = 28;
+
+  if (selectedTrackId === "noise") {
+    const n = state.ui.noiseInstrument ?? { decay: 0.4, tone: 0.65 };
+    const set = (p: Partial<typeof n>) => actions.setNoiseInstrument({ ...state.ui.noiseInstrument!, ...p });
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <Knob label="Decay" value={Math.round((n.decay ?? 0.4) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ decay: v / 100 })} />
+        <Knob label="Tone" value={Math.round((n.tone ?? 0.65) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ tone: v / 100 })} />
+      </div>
+    );
+  }
+  if (selectedTrackId === "hiPerc") {
+    const hi = state.ui.hiPercInstrument ?? { decay: 0.4, tone: 0.6 };
+    const setDecay = (v: number) => actions.setHiPercMacro({ decay: v / 100 });
+    const setTone = (v: number) => {
+      const prev = state.ui.hiPercInstrument!;
+      actions.setHiPercInstrumentFull({ ...prev, tone: v / 100 });
+    };
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <Knob label="Decay" value={Math.round((hi.decay ?? 0.4) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={setDecay} />
+        <Knob label="Tone" value={Math.round((hi.tone ?? 0.6) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={setTone} />
+      </div>
+    );
+  }
+  if (selectedTrackId === "lowPerc") {
+    const p = state.ui.lowPercInstrument ?? { decay: 0.55, tune: 0.38 };
+    const set = (patch: object) => actions.setLowPercInstrument({ ...state.ui.lowPercInstrument!, ...patch });
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <Knob label="Decay" value={Math.round((p.decay ?? 0.55) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ decay: v / 100 })} />
+        <Knob label="Tune" value={Math.round((p.tune ?? 0.38) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ tune: v / 100 })} />
+      </div>
+    );
+  }
+  if (selectedTrackId === "clap") {
+    const c = state.ui.clapInstrument ?? { decay: 0.6, tone: 0.5 };
+    const set = (patch: object) => actions.setClapInstrument({ ...state.ui.clapInstrument!, ...patch });
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <Knob label="Decay" value={Math.round((c.decay ?? 0.6) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ decay: v / 100 })} />
+        <Knob label="Tone" value={Math.round((c.tone ?? 0.5) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ tone: v / 100 })} />
+      </div>
+    );
+  }
+  if (selectedTrackId === "chord") {
+    const c = state.ui.chordInstrument ?? { tone: 0.52, decay: 0.4 };
+    const set = (patch: object) => actions.setChordInstrument({ ...state.ui.chordInstrument!, ...patch });
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <Knob label="Tone" value={Math.round((c.tone ?? 0.52) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ tone: v / 100 })} />
+        <Knob label="Decay" value={Math.round((c.decay ?? 0.4) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ decay: v / 100 })} />
+      </div>
+    );
+  }
+  if (selectedTrackId === "bass") {
+    const b = state.ui.bassInstrument ?? { pitch: 0.5, decay: 0.35 };
+    const set = (patch: object) => actions.setBassInstrument({ ...state.ui.bassInstrument!, ...patch });
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <Knob label="Pitch" value={Math.round((b.pitch ?? 0.5) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ pitch: v / 100 })} />
+        <Knob label="Decay" value={Math.round((b.decay ?? 0.35) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ decay: v / 100 })} />
+      </div>
+    );
+  }
+  if (selectedTrackId === "subPerc") {
+    const s = state.ui.subPercInstrument ?? { decay: 0.5, tone: 0.5 };
+    const set = (patch: object) => actions.setSubPercInstrument({ ...state.ui.subPercInstrument!, ...patch });
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <Knob label="Decay" value={Math.round((s.decay ?? 0.5) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ decay: v / 100 })} />
+        <Knob label="Tone" value={Math.round((s.tone ?? 0.5) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ tone: v / 100 })} />
+      </div>
+    );
+  }
+  if (selectedTrackId === "kick") {
+    const k = state.ui.kickInstrument ?? { decay: 0.65, punch: 0.55 };
+    const set = (patch: object) => actions.setKickInstrument({ ...state.ui.kickInstrument!, ...patch });
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <Knob label="Decay" value={Math.round((k.decay ?? 0.65) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ decay: v / 100 })} />
+        <Knob label="Punch" value={Math.round((k.punch ?? 0.55) * 100)} min={0} max={100} size={size} accentColor={ACCENT} onChange={(v) => set({ punch: v / 100 })} />
+      </div>
+    );
+  }
+  return null;
+}
 
 function toOptions<T extends { id: string; name: string }>(arr: T[]): InstrumentPresetOption[] {
   return arr.map((p) => ({ id: p.id, name: p.name, color: ACCENT }));
@@ -174,24 +269,47 @@ function applyHiPercPreset(
   }
 }
 
-export const InstrumentControlsPanel: React.FC<InstrumentControlsPanelProps> = ({ selectedTrackId }) => {
+export const InstrumentControlsPanel: React.FC<InstrumentControlsPanelProps> = ({
+  selectedTrackId,
+  collapsed = false,
+}) => {
   const { state, actions } = usePercuProV1Store();
 
   if (!selectedTrackId) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 p-8 text-center border-t border-white/[0.03]">
+      <div
+        className={`flex flex-col items-center justify-center border-t border-white/[0.03] ${
+          collapsed ? "flex-1 py-4 px-2" : "flex-1 p-8 text-center"
+        }`}
+      >
         <span className="text-[10px] font-mono font-bold text-white/20 uppercase tracking-widest">
-          Select an instrument
+          {collapsed ? "—" : "Select an instrument"}
         </span>
-        <span className="text-[9px] font-mono text-white/10 mt-2 block">
-          Click a lane in the sequencer to show its controls here.
-        </span>
+        {!collapsed && (
+          <span className="text-[9px] font-mono text-white/10 mt-2 block">
+            Click a lane in the sequencer to show its controls here.
+          </span>
+        )}
       </div>
     );
   }
 
   const label = INSTRUMENT_LABELS[selectedTrackId];
   const Panel = PANEL_BY_TRACK[selectedTrackId];
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-4 px-2 flex-1 border-t border-white/[0.03] min-h-0 overflow-hidden">
+        <span
+          className="text-[8px] font-bold font-sans uppercase tracking-widest text-[#E66000]"
+          style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+        >
+          {label}
+        </span>
+        <InstrumentControlsPanelPrimaries selectedTrackId={selectedTrackId} />
+      </div>
+    );
+  }
 
   const hi = state.ui.hiPercInstrument;
   const presetsByTrack: Record<TrackId, InstrumentPresetOption[]> = {
@@ -268,9 +386,9 @@ export const InstrumentControlsPanel: React.FC<InstrumentControlsPanelProps> = (
 
   return (
     <div className="flex flex-col border-t border-white/[0.03] bg-[#121212] overflow-hidden">
-      <div className="px-6 py-4 border-b border-white/[0.02]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+      <div className="px-5 py-3.5 border-b border-white/[0.02]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <span className="text-[11px] font-bold font-sans uppercase tracking-widest text-[#E66000]">
               {label}
             </span>
@@ -286,7 +404,7 @@ export const InstrumentControlsPanel: React.FC<InstrumentControlsPanelProps> = (
           />
         </div>
       </div>
-      <div className="p-6 flex flex-col gap-8 overflow-y-auto">
+      <div className="px-5 py-4 flex flex-col gap-6 overflow-y-auto min-h-0">
         <Panel />
       </div>
     </div>

@@ -261,8 +261,8 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
           <button type="button" className="p-1.5 text-[#121212]/15 hover:text-[#E66000] transition-colors"><ChevronRight size={16} /></button>
         </div>
 
-        {/* 16-Step Grid */}
-        <div className="flex flex-1 gap-1.5 min-w-[500px]">
+        {/* 16-Step Grid — flex-none so row doesn't reserve empty space; future controls can sit here */}
+        <div className="flex flex-none gap-1.5 min-w-[500px]">
           {activeSteps.map((active, i) => (
             <StepButton 
               key={i}
@@ -296,8 +296,8 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
               <div className="w-[240px] flex-none flex-shrink-0" aria-hidden />
               <div className="w-[76px] flex-none flex-shrink-0" aria-hidden />
 
-              {/* Bar strip: same flex + gap-1.5 + min-w as step grid for perfect alignment */}
-              <div className="flex-1 min-w-[500px] flex flex-col gap-3 min-h-0">
+              {/* Bar strip: same flex-none + gap-1.5 + min-w as step grid for perfect alignment */}
+              <div className="flex-none min-w-[500px] flex flex-col gap-3 min-h-0">
                 <div className="flex items-center justify-between flex-none flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-[#121212]/50">
                     {onLaneSwingChange != null && laneSwingPct != null && (
