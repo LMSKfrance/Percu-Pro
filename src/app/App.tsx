@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Header } from "./components/Header";
 import { MasterDockCollapsed, DOCK_HEIGHT } from "./components/MasterDockCollapsed";
 import { BottomSheet } from "./components/BottomSheet";
+import { FooterToolsPanel } from "./components/FooterToolsPanel";
 import { GrooveGeneratorProvider, GrooveGeneratorBar } from "./components/GrooveGenerator";
 import { SequencerRow } from "./components/SequencerRow";
 import { InstrumentControlsPanel } from "./components/InstrumentControlsPanel";
@@ -509,23 +510,39 @@ export default function App() {
       <div ref={footerRef} className="flex-none" aria-hidden />
 
       <BottomSheet open={masterExpanded} onClose={() => setMasterExpanded(false)}>
-        <div className="p-4 min-h-[200px]">
-          <MasterSectionBody
-            isPlaying={isPlaying}
-            isLooping={isLooping}
-            onTogglePlay={handleTogglePlay}
-            onStop={actions.stop}
-            onToggleLoop={actions.toggleLoop}
-            midiReady={midiReady}
-            midiOutputId={midiOutputId}
-            midiInputId={midiInputId}
-            midiSyncMode={midiSyncMode}
-            onInitMidi={initMidiOnce}
-            onMidiOutputChange={setMidiOutputId}
-            onMidiInputChange={setMidiInputId}
-            onMidiSyncModeChange={setMidiSyncMode}
-          />
-        </div>
+        <FooterToolsPanel
+          left={
+            <div className="flex flex-col gap-2 h-full">
+              <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-widest">Mini Mixer</span>
+              <p className="text-[11px] font-mono text-white/25">Channel strips + H3K send</p>
+            </div>
+          }
+          center={
+            <div className="flex flex-col gap-2 h-full">
+              <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-widest">H3K FX Rack</span>
+              <p className="text-[11px] font-mono text-white/25">Micro-pitch · Delay · Diffusion</p>
+            </div>
+          }
+          right={
+            <div className="h-full min-h-0 flex flex-col overflow-y-auto">
+              <MasterSectionBody
+                isPlaying={isPlaying}
+                isLooping={isLooping}
+                onTogglePlay={handleTogglePlay}
+                onStop={actions.stop}
+                onToggleLoop={actions.toggleLoop}
+                midiReady={midiReady}
+                midiOutputId={midiOutputId}
+                midiInputId={midiInputId}
+                midiSyncMode={midiSyncMode}
+                onInitMidi={initMidiOnce}
+                onMidiOutputChange={setMidiOutputId}
+                onMidiInputChange={setMidiInputId}
+                onMidiSyncModeChange={setMidiSyncMode}
+              />
+            </div>
+          }
+        />
       </BottomSheet>
 
       <div
