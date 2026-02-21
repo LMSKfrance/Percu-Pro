@@ -27,6 +27,7 @@ import {
   fmMdHatModel,
   fmMdHatApplyMacros,
 } from "../../audio/models/instruments";
+import { createH3KRack, type H3KRack, type H3KRackParams } from "../../audio/fx/h3kRack";
 
 const TRACK_IDS: TrackId[] = ["noise", "hiPerc", "lowPerc", "clap", "chord", "bass", "subPerc", "kick"];
 
@@ -55,6 +56,9 @@ let compressor: DynamicsCompressorNode | null = null;
 let hpf: BiquadFilterNode | null = null;
 let laneGains: Record<TrackId, GainNode> = {} as Record<TrackId, GainNode>;
 let masterFxInput: GainNode | null = null;
+let sumGain: GainNode | null = null;
+let h3kRack: H3KRack | null = null;
+let h3kSendGains: Record<TrackId, GainNode> = {} as Record<TrackId, GainNode>;
 const FFT_SIZE = 256;
 let channelAnalysers: Record<TrackId, AnalyserNode> = {} as Record<TrackId, AnalyserNode>;
 let masterAnalyser: AnalyserNode | null = null;
@@ -92,7 +96,13 @@ function ensureGraph(): boolean {
   masterFxInput = ctx.createGain();
   masterFxInput.gain.value = 1;
 
-  masterFxInput.connect(saturator);
+  sumGain = ctx.createGain();
+  sumGain.gain.value = 1;
+  masterFxInput.connect(sumGain!);
+  h3kRack = createH3KRack(ctx);
+  h3kRack.output.connect(sumGain!);
+  sumGain!.connect(saturator!);
+
   saturator!.connect(compressor);
   compressor!.connect(hpf);
   hpf!.connect(masterGain);
@@ -103,6 +113,11 @@ function ensureGraph(): boolean {
     g.gain.value = 1;
     g.connect(masterFxInput!);
     laneGains[id] = g;
+    const sendG = ctx.createGain();
+    sendG.gain.value = 0;
+    g.connect(sendG);
+    sendG.connect(h3kRack!.input);
+    h3kSendGains[id] = sendG;
     const anal = ctx.createAnalyser();
     anal.fftSize = FFT_SIZE;
     anal.smoothingTimeConstant = 0.6;
@@ -403,6 +418,21 @@ export function setHiPercVerbosParam(
   if (hiPercVerbosVoice) hiPercVerbosVoice.setParam(key, value);
 }
 
+const H3K_SMOOTH = 0.03;
+
+export function setH3kSend(laneId: TrackId, value: number): void {
+  const g = h3kSendGains[laneId];
+  if (g && ctx) g.gain.setTargetAtTime(Math.max(0, Math.min(1, value)), ctx.currentTime, H3K_SMOOTH);
+}
+
+export function setH3kParams(p: Partial<H3KRackParams>): void {
+  if (h3kRack) h3kRack.setParams(p);
+}
+
+export function killH3kFx(): void {
+  if (h3kRack) h3kRack.killFx();
+}
+
 export function setIsLooping(_value: boolean): void {
   // Scheduler reads isLooping from getState()
 }
@@ -416,12 +446,18 @@ export function dispose(): void {
     ctx = null;
   }
   (window as unknown as { __percuAudioContext?: AudioContext }).__percuAudioContext = undefined;
+  if (h3kRack) {
+    h3kRack.dispose();
+    h3kRack = null;
+  }
   masterGain = null;
   saturator = null;
   compressor = null;
   hpf = null;
   masterFxInput = null;
+  sumGain = null;
   laneGains = {} as Record<TrackId, GainNode>;
+  h3kSendGains = {} as Record<TrackId, GainNode>;
   channelAnalysers = {} as Record<TrackId, AnalyserNode>;
   masterAnalyser = null;
   sharedNoise.buffer = null;

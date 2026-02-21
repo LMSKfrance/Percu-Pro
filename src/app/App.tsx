@@ -4,6 +4,8 @@ import { MasterDockCollapsed, DOCK_HEIGHT } from "./components/MasterDockCollaps
 import { BottomSheet } from "./components/BottomSheet";
 import { FooterToolsPanel } from "./components/FooterToolsPanel";
 import { MiniMixer } from "./components/MiniMixer";
+import { H3KRackPanel } from "./components/H3KRackPanel";
+import type { H3KRackParams } from "../audio/fx/h3kRack";
 import { GrooveGeneratorProvider, GrooveGeneratorBar } from "./components/GrooveGenerator";
 import { SequencerRow } from "./components/SequencerRow";
 import { InstrumentControlsPanel } from "./components/InstrumentControlsPanel";
@@ -326,7 +328,25 @@ export default function App() {
   }, [state.ui.laneMuted, state.ui.laneGain]);
 
   const [h3kSend, setH3kSend] = useState<Partial<Record<TrackId, number>>>({});
+  const [h3kParams, setH3kParams] = useState<H3KRackParams>({
+    width: 0.3,
+    time: 0.4,
+    chaos: 0.2,
+    feedbackTone: 0.5,
+    diffuseAmount: 0.4,
+    returnLevel: 0.6,
+  });
   const meterLevels = useMeterLevels();
+
+  useEffect(() => {
+    Object.entries(h3kSend).forEach(([id, value]) => {
+      audioEngine.setH3kSend(id as TrackId, value ?? 0);
+    });
+  }, [h3kSend]);
+
+  useEffect(() => {
+    audioEngine.setH3kParams(h3kParams);
+  }, [h3kParams]);
 
   const [masterExpanded, setMasterExpanded] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -528,16 +548,13 @@ export default function App() {
               onMuteToggle={(id) => actions.setLaneMuted(id, !(state.ui.laneMuted?.[id] ?? false))}
               onGainChange={(id, gain) => actions.setLaneGain(id, gain)}
               onH3kSendChange={(id, send) => setH3kSend((prev) => ({ ...prev, [id]: send }))}
-              onKillFx={() => {}}
+              onKillFx={() => audioEngine.killH3kFx()}
               meterLevels={meterLevels.channels}
               masterMeter={meterLevels.master}
             />
           }
           center={
-            <div className="flex flex-col gap-2 h-full">
-              <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-widest">H3K FX Rack</span>
-              <p className="text-[11px] font-mono text-white/25">Micro-pitch · Delay · Diffusion</p>
-            </div>
+            <H3KRackPanel params={h3kParams} onParamsChange={(p) => setH3kParams((prev) => ({ ...prev, ...p }))} />
           }
           right={
             <div className="h-full min-h-0 flex flex-col overflow-y-auto">
