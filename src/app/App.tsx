@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Header } from "./components/Header";
 import { MasterDockCollapsed, DOCK_HEIGHT } from "./components/MasterDockCollapsed";
+import { BottomSheet } from "./components/BottomSheet";
 import { GrooveGeneratorProvider, GrooveGeneratorBar } from "./components/GrooveGenerator";
 import { SequencerRow } from "./components/SequencerRow";
 import { InstrumentControlsPanel } from "./components/InstrumentControlsPanel";
@@ -44,7 +45,6 @@ const SEQUENCER_TRACKS: { id: TrackId; label: string }[] = [
 ];
 
 const STORAGE_KEY_MASTER = "percu_master_expanded";
-const EXPANDED_TOOLS_HEIGHT = 300;
 
 type MasterSectionProps = {
   isPlaying: boolean;
@@ -329,6 +329,22 @@ export default function App() {
   const [instrumentPanelExpanded, setInstrumentPanelExpanded] = useState(true);
 
   const footerRef = useRef<HTMLDivElement>(null);
+  const footerBarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = footerBarRef.current;
+    const root = document.documentElement;
+    if (!el) return;
+    root.style.setProperty("--header-h", "80px");
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = entry.contentRect.height;
+        root.style.setProperty("--footer-h", `${h}px`);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const scrollFooterIntoView = useCallback(() => {
     footerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -348,7 +364,7 @@ export default function App() {
   return (
     <div
       className="min-h-screen bg-[#F2F2EB] flex flex-col overflow-x-hidden selection:bg-[#E66000]/20"
-      style={!masterExpanded ? { paddingBottom: DOCK_HEIGHT } : undefined}
+      style={{ paddingBottom: "calc(var(--footer-h, 64px) + 16px)" }}
     >
       <GrooveGeneratorProvider>
         <Header />
@@ -492,31 +508,30 @@ export default function App() {
 
       <div ref={footerRef} className="flex-none" aria-hidden />
 
-      <div className="fixed bottom-0 left-0 right-0 z-[100] flex flex-col shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
-        <motion.div
-          initial={false}
-          animate={{ height: masterExpanded ? EXPANDED_TOOLS_HEIGHT : 0 }}
-          transition={{ type: "spring", damping: 26, stiffness: 260 }}
-          className="overflow-hidden bg-[#181818] border-t border-white/[0.03] flex-shrink-0"
-        >
-          <div className="h-full min-h-0 w-full">
-            <MasterSectionBody
-              isPlaying={isPlaying}
-              isLooping={isLooping}
-              onTogglePlay={handleTogglePlay}
-              onStop={actions.stop}
-              onToggleLoop={actions.toggleLoop}
-              midiReady={midiReady}
-              midiOutputId={midiOutputId}
-              midiInputId={midiInputId}
-              midiSyncMode={midiSyncMode}
-              onInitMidi={initMidiOnce}
-              onMidiOutputChange={setMidiOutputId}
-              onMidiInputChange={setMidiInputId}
-              onMidiSyncModeChange={setMidiSyncMode}
-            />
-          </div>
-        </motion.div>
+      <BottomSheet open={masterExpanded} onClose={() => setMasterExpanded(false)}>
+        <div className="p-4 min-h-[200px]">
+          <MasterSectionBody
+            isPlaying={isPlaying}
+            isLooping={isLooping}
+            onTogglePlay={handleTogglePlay}
+            onStop={actions.stop}
+            onToggleLoop={actions.toggleLoop}
+            midiReady={midiReady}
+            midiOutputId={midiOutputId}
+            midiInputId={midiInputId}
+            midiSyncMode={midiSyncMode}
+            onInitMidi={initMidiOnce}
+            onMidiOutputChange={setMidiOutputId}
+            onMidiInputChange={setMidiInputId}
+            onMidiSyncModeChange={setMidiSyncMode}
+          />
+        </div>
+      </BottomSheet>
+
+      <div
+        ref={footerBarRef}
+        className="fixed bottom-0 left-0 right-0 z-[101] flex flex-col shadow-[0_-8px_32px_rgba(0,0,0,0.4)]"
+      >
         <MasterDockCollapsed
           isPlaying={isPlaying}
           isLooping={isLooping}
