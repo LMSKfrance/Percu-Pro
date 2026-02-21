@@ -243,10 +243,6 @@ export function MasterDockCollapsed({
   onBarClick,
   embedded,
 }: MasterDockCollapsedProps) {
-  const [dynamicsThresh, setDynamicsThresh] = useState(50);
-  const [driveDb, setDriveDb] = useState(0);
-  const [rumOn, setRumOn] = useState(false);
-  const [wet, setWet] = useState(50);
   const [bpmInput, setBpmInput] = useState(String(bpm));
   const [bpmFocused, setBpmFocused] = useState(false);
   const bpmDragStart = useRef({ y: 0, value: 0, moved: false });
@@ -254,30 +250,6 @@ export function MasterDockCollapsed({
   useEffect(() => {
     if (!bpmFocused) setBpmInput(String(bpm));
   }, [bpm, bpmFocused]);
-
-  const showRenderedHtml = useCallback(() => {
-    const raw = document.documentElement.outerHTML;
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(
-      "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Rendered HTML (1:1)</title><style>body{font-family:monospace;font-size:12px;line-height:1.4;margin:12px;white-space:pre-wrap;word-break:break-all;background:#1a1a1a;color:#e0e0e0;}</style></head><body><pre id=\"html\"></pre></body></html>"
-    );
-    win.document.close();
-    win.document.getElementById("html")!.textContent = raw;
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "H" || e.key === "h") {
-        const target = e.target as HTMLElement;
-        if (target.closest("input") || target.closest("textarea") || target.closest("[contenteditable]")) return;
-        e.preventDefault();
-        showRenderedHtml();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [showRenderedHtml]);
 
   const commitBpm = () => {
     const n = parseFloat(bpmInput);
@@ -385,43 +357,11 @@ export function MasterDockCollapsed({
           </div>
         </div>
 
-        {/* Mini-FX (Center-Right) */}
-        <div className="flex items-center gap-4 flex-shrink-0">
-          <span className="text-[8px] font-mono font-bold text-white/30 uppercase tracking-widest h-8 flex items-center" style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}>MINI-FX</span>
-          <div className="flex items-center gap-3 border-l border-[#1F2128] pl-4">
-            <div className="flex items-center gap-2" title="THRESH: 0dB (Shift+Click reset)">
-              <MiniGRMeter gr={12} />
-              <MiniKnob value={dynamicsThresh} min={0} max={100} defaultVal={50} onChange={setDynamicsThresh} tooltipLabel="THRESH" />
-            </div>
-            <div className="flex items-center gap-1 border-l border-[#1F2128] pl-3">
-              <span className="text-[7px] font-mono text-white/25 uppercase">Drive</span>
-              <ValueDragger value={driveDb} min={-12} max={12} defaultVal={0} onChange={setDriveDb} format={(v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}dB`} tooltipLabel="DRIVE" />
-            </div>
-            <div className="flex items-center gap-2 border-l border-[#1F2128] pl-3">
-              <button
-                onClick={(e) => { if (e.shiftKey) setRumOn(false); else setRumOn((o) => !o); }}
-                className={`w-5 h-5 rounded border flex items-center justify-center text-[9px] font-mono font-bold ${rumOn ? "border-[#00D2FF] shadow-[0_0_6px_rgba(0,210,255,0.4)] bg-[#00D2FF]/10 text-[#00D2FF]" : "border-[#1F2128] text-white/30 hover:bg-white/[0.04]"}`}
-                title="RUM (Shift+Click reset)"
-              >
-                R
-              </button>
-              <MiniWetSlider value={wet} onChange={setWet} tooltipLabel="WET" />
-            </div>
-          </div>
-        </div>
-
-        {/* Export + Debug HTML + Expand/Collapse (Right) */}
+        {/* Export + Expand/Collapse (Right) — advanced controls moved to bottom sheet */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <button className="flex items-center gap-2 px-3 h-8 rounded border border-[#E66000]/40 hover:border-[#E66000]/60 hover:bg-[#E66000]/10 transition-colors text-[9px] font-bold font-mono tracking-widest text-[#E66000]">
             <ExternalLink size={12} /> EXPORT
           </button>
-          <button
-            type="button"
-            onClick={showRenderedHtml}
-            className="w-9 h-9 rounded-full border border-white/20 bg-white flex items-center justify-center hover:bg-white/90 text-[#121212] shrink-0"
-            title="Show 1:1 rendered HTML (debug). Or press H."
-            aria-label="Show rendered HTML"
-          />
           <button
             onClick={isExpanded ? onCollapse : onExpand}
             className="w-9 h-9 rounded-full border border-[#1F2128] flex items-center justify-center hover:bg-white/[0.04] hover:border-white/10 transition-colors text-white/40 hover:text-white/60"
