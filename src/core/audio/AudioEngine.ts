@@ -63,8 +63,16 @@ const FFT_SIZE = 256;
 let channelAnalysers: Record<TrackId, AnalyserNode> = {} as Record<TrackId, AnalyserNode>;
 let masterAnalyser: AnalyserNode | null = null;
 
-let hiPercVerbosVoice: VerbosDsiFmPercVoice | null = null;
-let hiPercFmMdVoice: FmDrumVoice | FmSnareVoice | null = null;
+const HIPERC_POOL_SIZE = 8;
+const HIPERC_FM_MD_MAX_DECAY_SEC = 1.2;
+const HIPERC_VERBOS_MAX_DECAY_SEC = 0.95;
+
+type HiPercFmMdEntry = { voice: FmDrumVoice | FmSnareVoice; freeAfter: number };
+type HiPercVerbosEntry = { voice: VerbosDsiFmPercVoice; freeAfter: number };
+
+let hiPercVerbosPool: HiPercVerbosEntry[] = [];
+let hiPercFmMdPool: HiPercFmMdEntry[] = [];
+let hiPercFmMdModelId: "FM_MD_KICK" | "FM_MD_SNARE" | "FM_MD_HAT" | null = null;
 
 function ensureGraph(): boolean {
   if (!ctx) return false;
@@ -191,13 +199,18 @@ function buildTriggerStep(getState: GetState): TriggerStepFn {
     const state = getState();
     const ui = state.ui ?? {};
 
-    if (laneId === "hiPerc" && hiPercFmMdVoice) {
-      hiPercFmMdVoice.trigger(timeSec, velocity);
+    if (laneId === "hiPerc" && hiPercFmMdPool.length > 0) {
+      let entry = hiPercFmMdPool.find((e) => e.freeAfter <= timeSec);
+      if (!entry) entry = hiPercFmMdPool.reduce((a, b) => (a.freeAfter < b.freeAfter ? a : b));
+      entry.voice.trigger(timeSec, velocity);
+      entry.freeAfter = timeSec + HIPERC_FM_MD_MAX_DECAY_SEC;
       return;
     }
-    if (laneId === "hiPerc" && hiPercVerbosVoice) {
-      const dest = laneGains[laneId];
-      if (dest) hiPercVerbosVoice.trigger(timeSec, velocity);
+    if (laneId === "hiPerc" && hiPercVerbosPool.length > 0) {
+      let entry = hiPercVerbosPool.find((e) => e.freeAfter <= timeSec);
+      if (!entry) entry = hiPercVerbosPool.reduce((a, b) => (a.freeAfter < b.freeAfter ? a : b));
+      entry.voice.trigger(timeSec, velocity);
+      entry.freeAfter = timeSec + HIPERC_VERBOS_MAX_DECAY_SEC;
       return;
     }
 
@@ -295,8 +308,8 @@ export function stop(): void {
   stopScheduler();
   if (ctx) {
     const t = ctx.currentTime;
-    hiPercFmMdVoice?.silenceNow();
-    hiPercVerbosVoice?.silenceNow();
+    for (const e of hiPercFmMdPool) e.voice.silenceNow();
+    for (const e of hiPercVerbosPool) e.voice.silenceNow();
     for (const id of TRACK_IDS) {
       const g = laneGains[id];
       if (g) g.gain.setValueAtTime(0, t);
@@ -316,17 +329,14 @@ export function setPattern(_pattern: PatternState): void {
 }
 
 function disposeHiPercVerbosVoice(): void {
-  if (hiPercVerbosVoice) {
-    hiPercVerbosVoice.dispose();
-    hiPercVerbosVoice = null;
-  }
+  for (const e of hiPercVerbosPool) e.voice.dispose();
+  hiPercVerbosPool = [];
 }
 
 function disposeHiPercFmMdVoice(): void {
-  if (hiPercFmMdVoice) {
-    hiPercFmMdVoice.dispose();
-    hiPercFmMdVoice = null;
-  }
+  for (const e of hiPercFmMdPool) e.voice.dispose();
+  hiPercFmMdPool = [];
+  hiPercFmMdModelId = null;
 }
 
 export function setHiPercInstrumentState(config: HiPercInstrumentState | undefined): void {
@@ -347,34 +357,39 @@ export function setHiPercInstrumentState(config: HiPercInstrumentState | undefin
     const dest = laneGains.hiPerc;
     if (!dest) return;
 
-    if (hiPercFmMdVoice && config.modelId === "FM_MD_KICK") {
-      fmMdKickApplyMacros(hiPercFmMdVoice as FmDrumVoice, m1, m2, m3);
-      return;
-    }
-    if (hiPercFmMdVoice && config.modelId === "FM_MD_SNARE") {
-      fmMdSnareApplyMacros(hiPercFmMdVoice as FmSnareVoice, m1, m2, m3);
-      return;
-    }
-    if (hiPercFmMdVoice && config.modelId === "FM_MD_HAT") {
-      fmMdHatApplyMacros(hiPercFmMdVoice as FmDrumVoice, m1, m2, m3);
+    if (hiPercFmMdPool.length > 0 && config.modelId === hiPercFmMdModelId) {
+      for (const e of hiPercFmMdPool) {
+        if (config.modelId === "FM_MD_KICK") fmMdKickApplyMacros(e.voice as FmDrumVoice, m1, m2, m3);
+        else if (config.modelId === "FM_MD_SNARE") fmMdSnareApplyMacros(e.voice as FmSnareVoice, m1, m2, m3);
+        else fmMdHatApplyMacros(e.voice as FmDrumVoice, m1, m2, m3);
+      }
       return;
     }
 
     disposeHiPercFmMdVoice();
-    if (config.modelId === "FM_MD_KICK") {
-      hiPercFmMdVoice = fmMdKickModel.createVoice(ctx, dest, { pitch: m1, punch: m2, decay: m3 } as import("../../audio/models/instruments/fmMdKick").FmMdKickPreset);
-      fmMdKickApplyMacros(hiPercFmMdVoice as FmDrumVoice, m1, m2, m3);
-    } else if (config.modelId === "FM_MD_SNARE") {
-      hiPercFmMdVoice = fmMdSnareModel.createVoice(ctx, dest, { noiseMix: m1, tone: m2, snap: m3 } as import("../../audio/models/instruments/fmMdSnare").FmMdSnarePreset, sharedNoise);
-      fmMdSnareApplyMacros(hiPercFmMdVoice as FmSnareVoice, m1, m2, m3);
-    } else {
-      hiPercFmMdVoice = fmMdHatModel.createVoice(ctx, dest, { decay: m1, tone: m2, bright: m3 } as import("../../audio/models/instruments/fmMdHat").FmMdHatPreset);
-      fmMdHatApplyMacros(hiPercFmMdVoice as FmDrumVoice, m1, m2, m3);
+    hiPercFmMdModelId = config.modelId;
+    const presetKick = { pitch: m1, punch: m2, decay: m3 } as import("../../audio/models/instruments/fmMdKick").FmMdKickPreset;
+    const presetSnare = { noiseMix: m1, tone: m2, snap: m3 } as import("../../audio/models/instruments/fmMdSnare").FmMdSnarePreset;
+    const presetHat = { decay: m1, tone: m2, bright: m3 } as import("../../audio/models/instruments/fmMdHat").FmMdHatPreset;
+    for (let i = 0; i < HIPERC_POOL_SIZE; i++) {
+      let voice: FmDrumVoice | FmSnareVoice;
+      if (config.modelId === "FM_MD_KICK") {
+        voice = fmMdKickModel.createVoice(ctx, dest, presetKick);
+        fmMdKickApplyMacros(voice as FmDrumVoice, m1, m2, m3);
+      } else if (config.modelId === "FM_MD_SNARE") {
+        voice = fmMdSnareModel.createVoice(ctx, dest, presetSnare, sharedNoise);
+        fmMdSnareApplyMacros(voice as FmSnareVoice, m1, m2, m3);
+      } else {
+        voice = fmMdHatModel.createVoice(ctx, dest, presetHat);
+        fmMdHatApplyMacros(voice as FmDrumVoice, m1, m2, m3);
+      }
+      hiPercFmMdPool.push({ voice, freeAfter: 0 });
     }
     return;
   }
 
   disposeHiPercFmMdVoice();
+  hiPercFmMdModelId = null;
   if (config.modelId !== "VERBOS_DSI_FM_PERC") {
     disposeHiPercVerbosVoice();
     return;
@@ -385,16 +400,17 @@ export function setHiPercInstrumentState(config: HiPercInstrumentState | undefin
   const dest = laneGains.hiPerc;
   if (!dest) return;
   const t = ctx.currentTime;
-  if (hiPercVerbosVoice) {
-    hiPercVerbosVoice.setParam("color", config.color, t);
-    hiPercVerbosVoice.setParam("decay", config.decay, t);
-    hiPercVerbosVoice.setParam("drive", config.drive, t);
-    hiPercVerbosVoice.setParam("ratio", config.ratio, t);
-    hiPercVerbosVoice.setParam("tone", config.tone, t);
-    hiPercVerbosVoice.setParam("feedback", config.feedback, t);
+  if (hiPercVerbosPool.length > 0) {
+    for (const e of hiPercVerbosPool) {
+      e.voice.setParam("color", config.color, t);
+      e.voice.setParam("decay", config.decay, t);
+      e.voice.setParam("drive", config.drive, t);
+      e.voice.setParam("ratio", config.ratio, t);
+      e.voice.setParam("tone", config.tone, t);
+      e.voice.setParam("feedback", config.feedback, t);
+    }
     return;
   }
-  disposeHiPercVerbosVoice();
   const initial = {
     color: config.color,
     decay: config.decay,
@@ -403,20 +419,23 @@ export function setHiPercInstrumentState(config: HiPercInstrumentState | undefin
     tone: config.tone,
     feedback: config.feedback,
   };
-  hiPercVerbosVoice = verbosDsiFmPercModel.createVoice(ctx, dest, initial);
-  hiPercVerbosVoice.setParam("color", config.color, t);
-  hiPercVerbosVoice.setParam("decay", config.decay, t);
-  hiPercVerbosVoice.setParam("drive", config.drive, t);
-  hiPercVerbosVoice.setParam("ratio", config.ratio, t);
-  hiPercVerbosVoice.setParam("tone", config.tone, t);
-  hiPercVerbosVoice.setParam("feedback", config.feedback, t);
+  for (let i = 0; i < HIPERC_POOL_SIZE; i++) {
+    const voice = verbosDsiFmPercModel.createVoice(ctx, dest, initial);
+    voice.setParam("color", config.color, t);
+    voice.setParam("decay", config.decay, t);
+    voice.setParam("drive", config.drive, t);
+    voice.setParam("ratio", config.ratio, t);
+    voice.setParam("tone", config.tone, t);
+    voice.setParam("feedback", config.feedback, t);
+    hiPercVerbosPool.push({ voice, freeAfter: 0 });
+  }
 }
 
 export function setHiPercVerbosParam(
   key: "color" | "decay" | "drive" | "ratio" | "tone" | "feedback",
   value: number
 ): void {
-  if (hiPercVerbosVoice) hiPercVerbosVoice.setParam(key, value);
+  for (const e of hiPercVerbosPool) e.voice.setParam(key, value);
 }
 
 const H3K_SMOOTH = 0.03;

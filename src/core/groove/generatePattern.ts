@@ -254,7 +254,7 @@ function generateBass(rng: () => number, controls: GenerateControls): StepState[
         ...emptyStep(),
         active: true,
         velocity: clamp(0.7 + rng() * 0.25, caps.velocityMin, caps.velocityMax),
-        probability: clamp(0.9 + rng() * 0.1, caps.ghostProbabilityMin, 1),
+        probability: 1,
         accent: rng() < 0.2,
       };
       hits++;

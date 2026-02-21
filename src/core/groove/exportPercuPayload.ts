@@ -83,7 +83,7 @@ export function exportPercuPayload(options: ExportOptions): PercuGroovePayload {
     tempo,
     loopBars = 1,
     seed = pattern.seed ?? 42,
-    swing = pattern.swingPct ?? 55,
+    swing = pattern.swingPct ?? 50,
     grooveTemplateId = "straight",
     grooveAmount = 0.5,
     variationIndex = 0,

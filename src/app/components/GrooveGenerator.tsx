@@ -95,7 +95,7 @@ export function GrooveGeneratorProvider({ children }: { children: React.ReactNod
       const s = getState();
       return {
         tempo: s.transport?.bpm ?? 120,
-        swingPct: s.pattern?.swingPct ?? 55,
+        swingPct: s.pattern?.swingPct ?? 50,
         grooveTemplateId: presetToTemplateId(activePreset),
         grooveAmount: intensity / 100,
       };
@@ -126,7 +126,7 @@ export function GrooveGeneratorProvider({ children }: { children: React.ReactNod
           loopBars: 1,
           stepsPerBar: 16,
           seed: seedToUse,
-          swing: pat.swingPct ?? 55,
+          swing: pat.swingPct ?? 50,
           grooveTemplateId: getGrooveParams().grooveTemplateId,
           grooveAmount: intensity / 100,
           variationIndex: 0,

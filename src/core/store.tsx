@@ -235,7 +235,7 @@ export function reducer(state: AppState, action: Action): AppState {
     case "setStepOn": {
       const pattern = state.pattern ?? createInitialPatternState(state.transport.bpm, initialSeed);
       const { laneId, stepIndex, velocity = 0.75 } = action.payload;
-      const ops: PatchOp[] = [{ op: "SET_STEP", laneId, stepIndex, on: true, velocity }];
+      const ops: PatchOp[] = [{ op: "SET_STEP", laneId, stepIndex, on: true, velocity, probability: 1 }];
       return { ...state, pattern: applyPatternPatch(pattern, ops) };
     }
     case "clearStep": {

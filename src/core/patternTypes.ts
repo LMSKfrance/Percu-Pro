@@ -156,7 +156,7 @@ export function createInitialPatternState(tempoBpm: number, seed: number): Patte
     tempoBpm,
     seed,
     density: 0.5,
-    swingPct: 55,
+    swingPct: 50,
     lanes,
   };
 }
