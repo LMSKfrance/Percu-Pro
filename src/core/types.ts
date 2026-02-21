@@ -110,6 +110,8 @@ export interface UiState {
   cityProfile: string;
   /** Per-lane mute (power off); when true, instrument is silent but triggers stay visible */
   laneMuted: Partial<Record<TrackId, boolean>>;
+  /** Per-lane velocity scale 0..1; when set, multiplies step velocity at play time (default 1) */
+  laneVelocityScale?: Partial<Record<TrackId, number>>;
   /** Hi Perc (PERC1) instrument model + macros (optional; when absent, lane uses default perc) */
   hiPercInstrument?: HiPercInstrumentState;
   kickInstrument?: KickInstrumentState;

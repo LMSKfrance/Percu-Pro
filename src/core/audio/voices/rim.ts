@@ -18,7 +18,7 @@ function getNoiseBuffer(ctx: AudioContext, shared: { buffer: AudioBuffer | null 
 /** Sub perc / rim: short click. params: decay, tone (filter), punch. */
 export function createRimVoice(noiseBufferShared: { buffer: AudioBuffer | null }): VoiceTrigger {
   return (ctx, dest, timeSec, velocity01, _accent, params) => {
-    const now = timeSec;
+    const now = Math.max(timeSec, ctx.currentTime);
     const decay = (params?.decay as number) ?? 0.5;
     const tone = (params?.tone as number) ?? 0.5;
     const punch = (params?.punch as number) ?? 0.4;

@@ -126,6 +126,16 @@ export class FmDrumVoice {
     this.amp.gain.exponentialRampToValueAtTime(0.0001, time + decay);
   }
 
+  /** Cancel any scheduled envelopes and silence output (e.g. when transport stops). */
+  silenceNow(): void {
+    if (this.disposed) return;
+    const t = this.ctx.currentTime;
+    this.modGain.gain.cancelScheduledValues(t);
+    this.modGain.gain.setValueAtTime(0, t);
+    this.amp.gain.cancelScheduledValues(t);
+    this.amp.gain.setValueAtTime(0.0001, t);
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;

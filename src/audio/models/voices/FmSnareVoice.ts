@@ -149,6 +149,18 @@ export class FmSnareVoice {
     noise.stop(time + 0.15);
   }
 
+  /** Cancel any scheduled envelopes and silence output (e.g. when transport stops). */
+  silenceNow(): void {
+    if (this.disposed) return;
+    const t = this.ctx.currentTime;
+    this.modGain.gain.cancelScheduledValues(t);
+    this.modGain.gain.setValueAtTime(0, t);
+    this.bodyGain.gain.cancelScheduledValues(t);
+    this.bodyGain.gain.setValueAtTime(0.0001, t);
+    this.noiseGain.gain.cancelScheduledValues(t);
+    this.noiseGain.gain.setValueAtTime(0.0001, t);
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;

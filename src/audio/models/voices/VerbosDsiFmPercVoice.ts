@@ -181,6 +181,18 @@ export class VerbosDsiFmPercVoice {
     this.lp.frequency.exponentialRampToValueAtTime(lerp(180, 3500, this.params.tone), time + lerp(0.02, 0.12, this.params.decay));
   }
 
+  /** Cancel any scheduled envelopes and silence output (e.g. when transport stops). */
+  silenceNow(): void {
+    if (this.disposed) return;
+    const t = this.ctx.currentTime;
+    this.amp.gain.cancelScheduledValues(t);
+    this.amp.gain.setValueAtTime(0.0001, t);
+    this.modGain.gain.cancelScheduledValues(t);
+    this.modGain.gain.setValueAtTime(0, t);
+    this.fbGain.gain.cancelScheduledValues(t);
+    this.fbGain.gain.setValueAtTime(0, t);
+  }
+
   dispose() {
     if (this.disposed) return;
     this.disposed = true;

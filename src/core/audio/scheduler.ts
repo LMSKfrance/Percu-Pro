@@ -44,7 +44,8 @@ export function startScheduler(
   getState: GetState,
   getAudioTime: GetAudioTime,
   triggerStep: TriggerStepFn,
-  onStepTrigger?: OnStepTriggerFn
+  onStepTrigger?: OnStepTriggerFn,
+  onTick?: () => void
 ): void {
   if (running) return;
   running = true;
@@ -67,6 +68,7 @@ export function startScheduler(
   const seedBase = pattern.seed ?? 42;
 
   function tick() {
+    onTick?.();
     const state = getState();
     if (!state.transport?.isPlaying) {
       running = false;
@@ -113,8 +115,10 @@ export function startScheduler(
         let t = stepTime + microShiftSec;
         if (isOddStep) t += swingDelaySec;
 
-        triggerStep(laneId, stepIndex, t, step.velocity ?? 0.8, step.accent ?? false, step.pitch ?? 0);
-        onStepTrigger?.(laneId, stepIndex, t, step.velocity ?? 0.8, step.accent ?? false, step.pitch ?? 0);
+        const velScale = state.ui?.laneVelocityScale?.[laneId] ?? 1;
+        const vel = (step.velocity ?? 0.8) * velScale;
+        triggerStep(laneId, stepIndex, t, vel, step.accent ?? false, step.pitch ?? 0);
+        onStepTrigger?.(laneId, stepIndex, t, vel, step.accent ?? false, step.pitch ?? 0);
       }
 
       if (typeof import.meta !== "undefined" && import.meta.env?.DEV && stepIndex % 8 === 0) {

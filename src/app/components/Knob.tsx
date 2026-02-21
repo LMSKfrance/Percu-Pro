@@ -9,6 +9,8 @@ interface KnobProps {
   max?: number;
   onChange?: (value: number) => void;
   size?: number;
+  /** Accent color for indicator and glow (default #E66000) */
+  accentColor?: string;
 }
 
 export const Knob: React.FC<KnobProps> = ({
@@ -18,6 +20,7 @@ export const Knob: React.FC<KnobProps> = ({
   max = 100,
   onChange,
   size = 48,
+  accentColor = "#E66000",
 }) => {
   const [internalValue, setInternalValue] = useState(value);
   const startY = useRef(0);
@@ -56,7 +59,7 @@ export const Knob: React.FC<KnobProps> = ({
         style={{ width: size, height: size }}
       >
         {/* Shadow/Glow (Softer) */}
-        <div className="absolute inset-0 rounded-full bg-[#E66000] opacity-0 group-hover:opacity-5 blur-[8px] transition-opacity" />
+        <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-5 blur-[8px] transition-opacity" style={{ backgroundColor: accentColor }} />
         
         {/* Knob Body (Less contrast) */}
         <div className="absolute inset-0 rounded-full bg-[#2a2a2a] border border-[#3a3a3a] shadow-[0_2px_6px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.05)]" />
@@ -67,7 +70,7 @@ export const Knob: React.FC<KnobProps> = ({
           animate={{ rotate: rotation }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
-          <div className="w-[1.5px] h-3 bg-[#E66000] mt-1.5 rounded-full shadow-[0_0_4px_rgba(230,96,0,0.4)]" />
+          <div className="w-[1.5px] h-3 mt-1.5 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 4px ${accentColor}66` }} />
         </motion.div>
       </div>
       {label && (

@@ -412,6 +412,10 @@ export default function App() {
                   onStepAdd={(i) => actions.setStepOn(track.id, i)}
                   onStepClear={(i) => actions.clearStep(track.id, i)}
                   onStepAccentToggle={(i) => actions.setStepAccent(track.id, i, !accents[i])}
+                  laneSwingPct={lane?.laneSwingPct ?? 50}
+                  onLaneSwingChange={(v) => actions.applyPatternPatch([{ op: "SET_LANE_SWING", laneId: track.id, laneSwingPct: Math.max(50, Math.min(62, v)) }])}
+                  laneVelocityScale={state.ui.laneVelocityScale?.[track.id] ?? 1}
+                  onLaneVelocityScaleChange={(scale) => actions.setLaneVelocityScale(track.id, scale)}
                 />
               );
             })}

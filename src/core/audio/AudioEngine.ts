@@ -106,6 +106,14 @@ function ensureGraph(): boolean {
   return true;
 }
 
+function syncLaneGains(state: AppState): void {
+  const muted = state.ui?.laneMuted ?? {};
+  for (const id of TRACK_IDS) {
+    const g = laneGains[id];
+    if (g) g.gain.setValueAtTime(muted[id] ? 0 : 1, ctx!.currentTime);
+  }
+}
+
 function buildTriggerStep(getState: GetState): TriggerStepFn {
   return (
     laneId: TrackId,
@@ -206,6 +214,7 @@ export function start(getState: GetState, onStepTrigger?: OnStepTriggerFn): void
   userGestureInit();
   if (!ctx) return;
   ensureGraph();
+  syncLaneGains(getState());
   if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
     console.log("[Percu Pro audio] engine start");
   }
@@ -213,12 +222,22 @@ export function start(getState: GetState, onStepTrigger?: OnStepTriggerFn): void
     getState,
     () => ctx!.currentTime,
     buildTriggerStep(getState),
-    onStepTrigger
+    onStepTrigger,
+    () => syncLaneGains(getState())
   );
 }
 
 export function stop(): void {
   stopScheduler();
+  if (ctx) {
+    const t = ctx.currentTime;
+    hiPercFmMdVoice?.silenceNow();
+    hiPercVerbosVoice?.silenceNow();
+    for (const id of TRACK_IDS) {
+      const g = laneGains[id];
+      if (g) g.gain.setValueAtTime(0, t);
+    }
+  }
   if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
     console.log("[Percu Pro audio] engine stop");
   }

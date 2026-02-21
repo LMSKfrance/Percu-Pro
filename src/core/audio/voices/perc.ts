@@ -17,7 +17,7 @@ function getNoiseBuffer(ctx: AudioContext, shared: { buffer: AudioBuffer | null 
  */
 export function createPercVoice(noiseBufferShared: { buffer: AudioBuffer | null }): VoiceTrigger {
   return (ctx, dest, timeSec, velocity01, _accent, params) => {
-    const now = timeSec;
+    const now = Math.max(timeSec, ctx.currentTime);
     const freq = (params?.freq as number) ?? 400;
     const decay = (params?.decay as number) ?? 0.5;
     const punch = (params?.punch as number) ?? 0.4;

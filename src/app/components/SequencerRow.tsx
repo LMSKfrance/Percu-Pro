@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { StepButton } from "./StepButton";
-import { ChevronRight, ChevronLeft, ChevronDown, Power, Sliders, Shuffle } from "lucide-react";
+import { ChevronRight, ChevronLeft, ChevronDown, Power, Shuffle } from "lucide-react";
+import { Knob } from "./Knob";
 import { cn } from "../../lib/utils";
 import type { TrackId } from "../../core/types";
 import { quantizeToScale } from "../../core/scale";
@@ -21,6 +22,16 @@ const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", 
 function semitoneToNote(p: number): string {
   const i = ((p % 12) + 12) % 12;
   return NOTE_NAMES[i];
+}
+
+/** Base hue per note (0–11). Same note in different octaves = same hue, different lightness. */
+const NOTE_HUES: number[] = [0, 30, 50, 90, 120, 170, 190, 220, 270, 300, 330, 15];
+function getNoteColor(semitone: number): string {
+  const noteIndex = ((semitone % 12) + 12) % 12;
+  const octave = Math.floor(semitone / 12);
+  const hue = NOTE_HUES[noteIndex];
+  const lightness = Math.max(28, Math.min(72, 50 + octave * 10));
+  return `hsl(${hue}, 65%, ${lightness}%)`;
 }
 
 interface SequencerRowProps {
@@ -45,6 +56,12 @@ interface SequencerRowProps {
   /** Per-step pitch in semitones (-24..+24). When provided with onPitchChange, pitch is controlled from store. */
   pitches?: number[];
   onPitchChange?: (index: number, pitch: number) => void;
+  /** Lane swing 50–62 (micro timing). When provided with onLaneSwingChange, dial is shown and wired. */
+  laneSwingPct?: number;
+  onLaneSwingChange?: (laneSwingPct: number) => void;
+  /** Lane velocity scale 0..1 (velocity range). When provided with onLaneVelocityScaleChange, dial is shown and wired. */
+  laneVelocityScale?: number;
+  onLaneVelocityScaleChange?: (scale: number) => void;
 }
 
 export const SequencerRow: React.FC<SequencerRowProps> = ({
@@ -67,6 +84,10 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
   onStepAccentToggle,
   pitches: controlledPitches,
   onPitchChange,
+  laneSwingPct,
+  onLaneSwingChange,
+  laneVelocityScale = 1,
+  onLaneVelocityScaleChange,
 }) => {
   const [localSteps, setLocalSteps] = useState<boolean[]>(DEFAULT_STEPS);
   const [localVelocities, setLocalVelocities] = useState<number[]>(DEFAULT_VELS);
@@ -129,6 +150,13 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
   const handlePitchReset = (index: number) => {
     if (onPitchChange) onPitchChange(index, 0);
     else setPitchSteps((prev) => { const next = [...prev]; next[index] = 0; return next; });
+  };
+
+  const handleRandomVelocity = () => {
+    for (let i = 0; i < 16; i++) {
+      const v = 20 + Math.floor(Math.random() * 21);
+      handleVelocityChange(i, v);
+    }
   };
 
   const pitchBarDragRef = React.useRef<{ index: number; startY: number; startPitch: number; didMove: boolean } | null>(null);
@@ -264,43 +292,50 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
             className="flex-1 border-t border-[#121212]/08 px-8 py-3 overflow-hidden"
           >
             <div className="flex gap-6 items-start min-h-0">
-              {/* Left: Micro Timing (swing 0 = 50%, vel range) */}
-              <div className="w-[240px] flex-none flex flex-col gap-3 min-h-0">
-                <div className="flex items-center gap-2 text-[#121212]/40">
-                  <Sliders size={14} strokeWidth={2.5} />
-                  <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Micro Timing</span>
-                </div>
-                <div className="flex gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">0</span>
-                    <div className="w-[96px] h-1.5 bg-[#121212]/12 rounded-[2px] relative overflow-hidden">
-                      <motion.div 
-                        className="absolute left-0 top-0 h-full bg-[#E66000]/60 rounded-[2px]"
-                        initial={{ width: "50%" }}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[9px] font-bold font-mono text-[#121212]/30 tracking-wider">VEL RANGE</span>
-                    <div className="w-[96px] h-1.5 bg-[#121212]/12 rounded-[2px] relative overflow-hidden">
-                      <motion.div 
-                        className="absolute left-0 top-0 h-full bg-[#A855F7]/60 rounded-[2px]"
-                        initial={{ width: "65%" }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Spacer: same width as nudge so bar strip aligns with step grid */}
+              {/* Spacer: match main row left (label + nudge) so bar strip aligns with step grid */}
+              <div className="w-[240px] flex-none flex-shrink-0" aria-hidden />
               <div className="w-[76px] flex-none flex-shrink-0" aria-hidden />
 
               {/* Bar strip: same flex + gap-1.5 + min-w as step grid for perfect alignment */}
               <div className="flex-1 min-w-[500px] flex flex-col gap-3 min-h-0">
                 <div className="flex items-center justify-between flex-none flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-[#121212]/50">
-                    <Shuffle size={14} strokeWidth={2.5} />
+                    {onLaneSwingChange != null && laneSwingPct != null && (
+                      <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center">
+                        <Knob
+                          value={Math.round(((laneSwingPct - 50) / 12) * 100)}
+                          min={0}
+                          max={100}
+                          size={28}
+                          accentColor="#E66000"
+                          onChange={(v) => onLaneSwingChange(50 + (v / 100) * 12)}
+                        />
+                        <span className="text-[7px] font-mono font-bold text-[#121212]/40 tracking-wider uppercase mt-0.5">Micro</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleRandomVelocity(); }}
+                      className="p-1 rounded-[4px] hover:bg-[#121212]/10 hover:text-[#E66000] transition-colors flex items-center justify-center"
+                      title="Randomize velocity (20–40%)"
+                      aria-label="Randomize velocity"
+                    >
+                      <Shuffle size={14} strokeWidth={2.5} />
+                    </button>
                     <span className="text-[10px] font-bold font-mono tracking-widest uppercase">Velocity</span>
+                    {onLaneVelocityScaleChange != null && (
+                      <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center">
+                        <Knob
+                          value={Math.round((laneVelocityScale ?? 1) * 100)}
+                          min={0}
+                          max={100}
+                          size={28}
+                          accentColor="#A855F7"
+                          onChange={(v) => onLaneVelocityScaleChange(v / 100)}
+                        />
+                        <span className="text-[7px] font-mono font-bold text-[#121212]/40 tracking-wider uppercase mt-0.5">Range</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="relative flex items-center">
@@ -361,13 +396,14 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                       </div>
                     ))}
                   </div>
-                  {/* Pitch bars: -24..+24, note name at bottom (A, E, C#), semitone in center */}
+                  {/* Pitch bars: -24..+24, note name in center (white circle, bigger font), semitone at bottom; fill by note color (lighter/darker per octave) */}
                   <div className="h-[92px] min-w-0 flex items-end gap-1.5">
                     {[...Array(16)].map((_, i) => {
                       const p = pitchStepsResolved[i] ?? 0;
                       const fillPercent = Math.max(4, Math.min(100, ((p - PITCH_MIN) / (PITCH_MAX - PITCH_MIN)) * 100));
                       const keyLabel = p === 0 ? "0" : p > 0 ? `+${p}` : `${p}`;
                       const noteName = semitoneToNote(p);
+                      const fillColor = getNoteColor(p);
                       return (
                         <div key={i} className="flex-1 min-w-0 h-full flex flex-col">
                           <div
@@ -380,14 +416,17 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                             aria-valuemax={PITCH_MAX}
                           >
                             <div
-                              className="absolute bottom-0 left-0 right-0 bg-[#00D2FF] rounded-[2px] transition-[height] duration-100"
+                              className="absolute bottom-0 left-0 right-0 rounded-[2px] transition-[height] duration-100 bg-[#7DD3FC]"
                               style={{ height: `${fillPercent}%` }}
                             />
-                            <span className="text-[8px] font-mono font-bold text-[#121212]/70 tabular-nums relative z-10 pointer-events-none">
-                              {keyLabel}
-                            </span>
-                            <span className="absolute bottom-0.5 left-0 right-0 text-center text-[7px] font-mono font-bold text-[#121212]/60 pointer-events-none z-10">
+                            <span
+                              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#E8E4DC] text-[8px] font-mono font-bold text-[#121212]/80 pointer-events-none z-10 border-[2.5px] border-solid"
+                              style={{ borderColor: fillColor }}
+                            >
                               {noteName}
+                            </span>
+                            <span className="absolute bottom-0.5 left-0 right-0 text-center text-[7px] font-mono font-bold text-[#121212]/60 tabular-nums pointer-events-none z-10">
+                              {keyLabel}
                             </span>
                           </div>
                         </div>
