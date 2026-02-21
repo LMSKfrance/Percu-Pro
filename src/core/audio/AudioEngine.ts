@@ -115,7 +115,7 @@ function triggerStep(
 ): void {
   if (!ctx) return;
   if (laneId === "hiPerc" && hiPercFmMdVoice) {
-    hiPercFmMdVoice.trigger(timeSec, velocity);
+    hiPercFmMdVoice.trigger(timeSec, velocity); // FM MD Kick/Snare/Hat
     return;
   }
   if (laneId === "hiPerc" && hiPercVerbosVoice) {
