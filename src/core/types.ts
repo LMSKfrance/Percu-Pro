@@ -40,6 +40,68 @@ export interface HiPercInstrumentState {
   fmMdMacro3?: number;
 }
 
+/** All instrument params 0..1 unless noted. Used by voices for real-time sound. */
+export interface KickInstrumentState {
+  presetId: string;
+  pitch: number;   // 0=low, 1=high (start freq)
+  decay: number;
+  punch: number;   // attack/body
+  tone: number;
+  drive: number;
+  sub: number;     // sub weight
+}
+
+export interface NoiseInstrumentState {
+  presetId: string;
+  decay: number;
+  tone: number;    // filter
+  noise: number;   // level
+  hpf: number;
+}
+
+export interface LowPercInstrumentState {
+  presetId: string;
+  tune: number;    // center freq
+  decay: number;
+  punch: number;
+  color: number;
+  shape: number;
+  noise: number;
+}
+
+export interface ClapInstrumentState {
+  presetId: string;
+  decay: number;
+  snap: number;
+  tone: number;
+  stereo: number;
+  noise: number;
+  body: number;
+}
+
+export interface ChordInstrumentState {
+  presetId: string;
+  tone: number;    // freq / brightness
+  decay: number;
+  body: number;
+}
+
+export interface BassInstrumentState {
+  presetId: string;
+  pitch: number;   // semitones offset from step
+  cutoff: number;
+  resonance: number;
+  decay: number;
+  drive: number;
+}
+
+export interface SubPercInstrumentState {
+  presetId: string;
+  decay: number;
+  tone: number;
+  punch: number;
+}
+
 export interface UiState {
   activeTrackId: TrackId;
   expandedTrackId: TrackId | null;
@@ -50,6 +112,13 @@ export interface UiState {
   laneMuted: Partial<Record<TrackId, boolean>>;
   /** Hi Perc (PERC1) instrument model + macros (optional; when absent, lane uses default perc) */
   hiPercInstrument?: HiPercInstrumentState;
+  kickInstrument?: KickInstrumentState;
+  noiseInstrument?: NoiseInstrumentState;
+  lowPercInstrument?: LowPercInstrumentState;
+  clapInstrument?: ClapInstrumentState;
+  chordInstrument?: ChordInstrumentState;
+  bassInstrument?: BassInstrumentState;
+  subPercInstrument?: SubPercInstrumentState;
 }
 
 export interface GrooveCandidate {

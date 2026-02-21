@@ -13,12 +13,15 @@ function getNoiseBuffer(ctx: AudioContext, shared: { buffer: AudioBuffer | null 
 }
 
 /**
- * Closed hat: noise through highpass + short env.
+ * Closed hat / noise: highpass + env. params: decay, tone (filter 0..1), noise (level), hpf.
  */
 export function createHatClosedVoice(noiseBufferShared: { buffer: AudioBuffer | null }): VoiceTrigger {
   return (ctx, dest, timeSec, velocity01, _accent, params) => {
     const now = timeSec;
     const decay = (params?.decay as number) ?? 0.04;
+    const tone = (params?.tone as number) ?? 0.65;
+    const noiseLevel = (params?.noise as number) ?? 0.8;
+    const hpfVal = (params?.hpf as number) ?? 0.7;
     const buf = getNoiseBuffer(ctx, noiseBufferShared);
 
     const noise = ctx.createBufferSource();
@@ -27,19 +30,20 @@ export function createHatClosedVoice(noiseBufferShared: { buffer: AudioBuffer | 
 
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
-    hp.frequency.value = 7000;
-    hp.Q.value = 0.7;
+    hp.frequency.value = 4000 + hpfVal * 8000;
+    hp.Q.value = 0.5 + tone * 0.5;
 
     const gain = ctx.createGain();
+    const decaySec = 0.02 + decay * 0.12;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(velocity01 * 0.25, now + 0.002);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
+    gain.gain.linearRampToValueAtTime(velocity01 * 0.25 * noiseLevel, now + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + decaySec);
 
     noise.connect(hp);
     hp.connect(gain);
     gain.connect(dest);
     noise.start(now);
-    noise.stop(now + Math.min(decay + 0.01, 0.12));
+    noise.stop(now + Math.min(decaySec + 0.01, 0.15));
   };
 }
 

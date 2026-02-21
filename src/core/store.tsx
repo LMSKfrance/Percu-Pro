@@ -1,5 +1,18 @@
 import React, { useReducer, useCallback, useContext, useMemo } from "react";
-import type { AppState, TrackId, EngineId, GrooveCandidate, HiPercInstrumentState } from "./types";
+import type {
+  AppState,
+  TrackId,
+  EngineId,
+  GrooveCandidate,
+  HiPercInstrumentState,
+  KickInstrumentState,
+  NoiseInstrumentState,
+  LowPercInstrumentState,
+  ClapInstrumentState,
+  ChordInstrumentState,
+  BassInstrumentState,
+  SubPercInstrumentState,
+} from "./types";
 import type { PatchOp, PatternState } from "./patternTypes";
 import { createInitialPatternState, applyPatternPatch } from "./patternTypes";
 import { buildFullRandomizeOps } from "./groove/fullRandomize";
@@ -33,6 +46,67 @@ const defaultHiPercInstrument: HiPercInstrumentState = {
   fmMdMacro3: 0.5,
 };
 
+const defaultKickInstrument: KickInstrumentState = {
+  presetId: "default",
+  pitch: 0.42,
+  decay: 0.65,
+  punch: 0.55,
+  tone: 0.5,
+  drive: 0.3,
+  sub: 0.7,
+};
+
+const defaultNoiseInstrument: NoiseInstrumentState = {
+  presetId: "default",
+  decay: 0.4,
+  tone: 0.65,
+  noise: 0.8,
+  hpf: 0.7,
+};
+
+const defaultLowPercInstrument: LowPercInstrumentState = {
+  presetId: "default",
+  tune: 0.38,
+  decay: 0.55,
+  punch: 0.35,
+  color: 0.45,
+  shape: 0.5,
+  noise: 0.25,
+};
+
+const defaultClapInstrument: ClapInstrumentState = {
+  presetId: "default",
+  decay: 0.6,
+  snap: 0.55,
+  tone: 0.5,
+  stereo: 0.4,
+  noise: 0.7,
+  body: 0.45,
+};
+
+const defaultChordInstrument: ChordInstrumentState = {
+  presetId: "default",
+  tone: 0.52,
+  decay: 0.4,
+  body: 0.5,
+};
+
+const defaultBassInstrument: BassInstrumentState = {
+  presetId: "default",
+  pitch: 0,
+  cutoff: 0.5,
+  resonance: 0.4,
+  decay: 0.35,
+  drive: 0.3,
+};
+
+const defaultSubPercInstrument: SubPercInstrumentState = {
+  presetId: "default",
+  decay: 0.5,
+  tone: 0.5,
+  punch: 0.4,
+};
+
 export const initialState: AppState = {
   ui: {
     activeTrackId: "kick",
@@ -41,6 +115,13 @@ export const initialState: AppState = {
     cityProfile: "Berlin",
     laneMuted: {},
     hiPercInstrument: defaultHiPercInstrument,
+    kickInstrument: defaultKickInstrument,
+    noiseInstrument: defaultNoiseInstrument,
+    lowPercInstrument: defaultLowPercInstrument,
+    clapInstrument: defaultClapInstrument,
+    chordInstrument: defaultChordInstrument,
+    bassInstrument: defaultBassInstrument,
+    subPercInstrument: defaultSubPercInstrument,
   },
   transport: { bpm: initialBpm, isPlaying: false, isLooping: true },
   pattern: createInitialPatternState(initialBpm, initialSeed),
@@ -73,7 +154,14 @@ type Action =
   | { type: "setHiPercMacro"; payload: { color?: number; decay?: number; drive?: number } }
   | { type: "setHiPercInstrumentFull"; payload: HiPercInstrumentState }
   | { type: "setHiPercFmMdMacro"; payload: { m1?: number; m2?: number; m3?: number } }
-  | { type: "setHiPercFmMdPreset"; payload: { presetId: string | null; m1: number; m2: number; m3: number } };
+  | { type: "setHiPercFmMdPreset"; payload: { presetId: string | null; m1: number; m2: number; m3: number } }
+  | { type: "setKickInstrument"; payload: KickInstrumentState }
+  | { type: "setNoiseInstrument"; payload: NoiseInstrumentState }
+  | { type: "setLowPercInstrument"; payload: LowPercInstrumentState }
+  | { type: "setClapInstrument"; payload: ClapInstrumentState }
+  | { type: "setChordInstrument"; payload: ChordInstrumentState }
+  | { type: "setBassInstrument"; payload: BassInstrumentState }
+  | { type: "setSubPercInstrument"; payload: SubPercInstrumentState };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -242,6 +330,20 @@ export function reducer(state: AppState, action: Action): AppState {
         },
       };
     }
+    case "setKickInstrument":
+      return { ...state, ui: { ...state.ui, kickInstrument: action.payload } };
+    case "setNoiseInstrument":
+      return { ...state, ui: { ...state.ui, noiseInstrument: action.payload } };
+    case "setLowPercInstrument":
+      return { ...state, ui: { ...state.ui, lowPercInstrument: action.payload } };
+    case "setClapInstrument":
+      return { ...state, ui: { ...state.ui, clapInstrument: action.payload } };
+    case "setChordInstrument":
+      return { ...state, ui: { ...state.ui, chordInstrument: action.payload } };
+    case "setBassInstrument":
+      return { ...state, ui: { ...state.ui, bassInstrument: action.payload } };
+    case "setSubPercInstrument":
+      return { ...state, ui: { ...state.ui, subPercInstrument: action.payload } };
     default:
       return state;
   }
@@ -278,6 +380,13 @@ type StoreValue = {
     setHiPercInstrumentFull: (payload: HiPercInstrumentState) => void;
     setHiPercFmMdMacro: (payload: { m1?: number; m2?: number; m3?: number }) => void;
     setHiPercFmMdPreset: (payload: { presetId: string | null; m1: number; m2: number; m3: number }) => void;
+    setKickInstrument: (payload: KickInstrumentState) => void;
+    setNoiseInstrument: (payload: NoiseInstrumentState) => void;
+    setLowPercInstrument: (payload: LowPercInstrumentState) => void;
+    setClapInstrument: (payload: ClapInstrumentState) => void;
+    setChordInstrument: (payload: ChordInstrumentState) => void;
+    setBassInstrument: (payload: BassInstrumentState) => void;
+    setSubPercInstrument: (payload: SubPercInstrumentState) => void;
   };
 };
 
@@ -329,6 +438,13 @@ export function PercuProStoreProvider({ children }: { children: React.ReactNode 
     setHiPercInstrumentFull: useCallback((payload: HiPercInstrumentState) => dispatch({ type: "setHiPercInstrumentFull", payload }), []),
     setHiPercFmMdMacro: useCallback((payload: { m1?: number; m2?: number; m3?: number }) => dispatch({ type: "setHiPercFmMdMacro", payload }), []),
     setHiPercFmMdPreset: useCallback((payload: { presetId: string | null; m1: number; m2: number; m3: number }) => dispatch({ type: "setHiPercFmMdPreset", payload }), []),
+    setKickInstrument: useCallback((payload: KickInstrumentState) => dispatch({ type: "setKickInstrument", payload }), []),
+    setNoiseInstrument: useCallback((payload: NoiseInstrumentState) => dispatch({ type: "setNoiseInstrument", payload }), []),
+    setLowPercInstrument: useCallback((payload: LowPercInstrumentState) => dispatch({ type: "setLowPercInstrument", payload }), []),
+    setClapInstrument: useCallback((payload: ClapInstrumentState) => dispatch({ type: "setClapInstrument", payload }), []),
+    setChordInstrument: useCallback((payload: ChordInstrumentState) => dispatch({ type: "setChordInstrument", payload }), []),
+    setBassInstrument: useCallback((payload: BassInstrumentState) => dispatch({ type: "setBassInstrument", payload }), []),
+    setSubPercInstrument: useCallback((payload: SubPercInstrumentState) => dispatch({ type: "setSubPercInstrument", payload }), []),
   };
 
   const value = useMemo<StoreValue>(() => ({ state, dispatch, actions }), [state, actions]);

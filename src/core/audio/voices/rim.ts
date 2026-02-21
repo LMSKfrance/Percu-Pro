@@ -15,9 +15,13 @@ function getNoiseBuffer(ctx: AudioContext, shared: { buffer: AudioBuffer | null 
   return buffer;
 }
 
+/** Sub perc / rim: short click. params: decay, tone (filter), punch. */
 export function createRimVoice(noiseBufferShared: { buffer: AudioBuffer | null }): VoiceTrigger {
-  return (ctx, dest, timeSec, velocity01, _accent, _params) => {
+  return (ctx, dest, timeSec, velocity01, _accent, params) => {
     const now = timeSec;
+    const decay = (params?.decay as number) ?? 0.5;
+    const tone = (params?.tone as number) ?? 0.5;
+    const punch = (params?.punch as number) ?? 0.4;
     const buf = getNoiseBuffer(ctx, noiseBufferShared);
 
     const noise = ctx.createBufferSource();
@@ -26,18 +30,19 @@ export function createRimVoice(noiseBufferShared: { buffer: AudioBuffer | null }
 
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
-    hp.frequency.value = 2000;
-    hp.Q.value = 1;
+    hp.frequency.value = 1000 + tone * 4000;
+    hp.Q.value = 0.5 + punch * 1;
 
     const gain = ctx.createGain();
+    const decaySec = 0.02 + decay * 0.06;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(velocity01 * 0.3, now + 0.001);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+    gain.gain.linearRampToValueAtTime(velocity01 * (0.25 + punch * 0.15), now + 0.001);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + decaySec);
 
     noise.connect(hp);
     hp.connect(gain);
     gain.connect(dest);
     noise.start(now);
-    noise.stop(now + 0.05);
+    noise.stop(now + Math.max(decaySec + 0.01, 0.06));
   };
 }

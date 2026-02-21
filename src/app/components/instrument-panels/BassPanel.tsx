@@ -1,26 +1,18 @@
 import React from "react";
 import { Knob } from "../Knob";
+import { usePercuProV1Store } from "../../../core/store";
 
-export const BassPanel: React.FC = () => (
-  <>
-    <div className="flex items-center justify-between">
-      <span className="text-[9px] font-mono font-bold text-white/30 uppercase tracking-widest">Mode</span>
-      <div className="flex gap-1 p-0.5 bg-white/[0.03] rounded-[2px] border border-white/[0.05]">
-        <button type="button" className="px-3 py-1.5 text-[9px] font-bold font-mono uppercase tracking-wider rounded-[2px] bg-[#E66000]/20 text-[#E66000] border border-[#E66000]/30">
-          Acid
-        </button>
-        <button type="button" className="px-3 py-1.5 text-[9px] font-bold font-mono uppercase tracking-wider rounded-[2px] text-white/40 hover:text-white/70 transition-colors">
-          Techno Rumble
-        </button>
-      </div>
-    </div>
+export const BassPanel: React.FC = () => {
+  const { state, actions } = usePercuProV1Store();
+  const b = state.ui.bassInstrument ?? { presetId: "default", pitch: 0.5, cutoff: 0.5, resonance: 0.4, decay: 0.35, drive: 0.3 };
+  const set = (patch: Partial<typeof b>) => actions.setBassInstrument({ ...b, ...patch });
+  return (
     <div className="grid grid-cols-3 gap-6">
-      <Knob label="Tune" value={35} size={44} />
-      <Knob label="Decay" value={50} size={44} />
-      <Knob label="Cutoff" value={45} size={44} />
-      <Knob label="Reso" value={55} size={44} />
-      <Knob label="Drive" value={25} size={44} />
-      <Knob label="Rumble" value={40} size={44} />
+      <Knob label="Pitch" value={Math.round(b.pitch * 100)} min={0} max={100} size={44} onChange={(v) => set({ pitch: v / 100 })} />
+      <Knob label="Cutoff" value={Math.round(b.cutoff * 100)} min={0} max={100} size={44} onChange={(v) => set({ cutoff: v / 100 })} />
+      <Knob label="Reso" value={Math.round(b.resonance * 100)} min={0} max={100} size={44} onChange={(v) => set({ resonance: v / 100 })} />
+      <Knob label="Decay" value={Math.round(b.decay * 100)} min={0} max={100} size={44} onChange={(v) => set({ decay: v / 100 })} />
+      <Knob label="Drive" value={Math.round(b.drive * 100)} min={0} max={100} size={44} onChange={(v) => set({ drive: v / 100 })} />
     </div>
-  </>
-);
+  );
+};

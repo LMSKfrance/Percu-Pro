@@ -13,13 +13,19 @@ function getNoiseBuffer(ctx: AudioContext, shared: { buffer: AudioBuffer | null 
 }
 
 /**
- * Clap: 3-4 quick noise bursts.
+ * Clap: quick noise bursts. params: decay, snap (spacing), tone, stereo, noise (level), body.
  */
 export function createClapVoice(noiseBufferShared: { buffer: AudioBuffer | null }): VoiceTrigger {
-  return (ctx, dest, timeSec, velocity01, _accent, _params) => {
+  return (ctx, dest, timeSec, velocity01, _accent, params) => {
     const buf = getNoiseBuffer(ctx, noiseBufferShared);
-    const bursts = [0, 0.008, 0.016, 0.024];
-    const level = velocity01 * 0.35;
+    const snap = (params?.snap as number) ?? 0.55;
+    const decay = (params?.decay as number) ?? 0.5;
+    const noiseLevel = (params?.noise as number) ?? 0.7;
+    const body = (params?.body as number) ?? 0.45;
+    const spread = 0.004 + (1 - snap) * 0.02;
+    const bursts = [0, spread, spread * 2, spread * 2.8];
+    const level = velocity01 * (0.25 + body * 0.2) * noiseLevel;
+    const decaySec = 0.02 + decay * 0.04;
 
     for (const offset of bursts) {
       const now = timeSec + offset;
@@ -29,13 +35,13 @@ export function createClapVoice(noiseBufferShared: { buffer: AudioBuffer | null 
 
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(level, now + 0.002);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      gain.gain.linearRampToValueAtTime(level, now + 0.0015);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + decaySec);
 
       noise.connect(gain);
       gain.connect(dest);
       noise.start(now);
-      noise.stop(now + 0.035);
+      noise.stop(now + decaySec + 0.01);
     }
   };
 }

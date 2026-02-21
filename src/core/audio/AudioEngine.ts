@@ -6,6 +6,7 @@
 import type { PatternState } from "../patternTypes";
 import type { TrackId } from "../types";
 import type { AppState, HiPercInstrumentState } from "../types";
+import type { TriggerStepFn } from "./scheduler";
 import { startScheduler, stopScheduler, type OnStepTriggerFn } from "./scheduler";
 import type { VoiceTrigger } from "./voices/types";
 import { triggerKick } from "./voices/kick";
@@ -105,31 +106,89 @@ function ensureGraph(): boolean {
   return true;
 }
 
-function triggerStep(
-  laneId: TrackId,
-  _stepIndex: number,
-  timeSec: number,
-  velocity: number,
-  accent: boolean,
-  pitchSemitones: number
-): void {
-  if (!ctx) return;
-  if (laneId === "hiPerc" && hiPercFmMdVoice) {
-    hiPercFmMdVoice.trigger(timeSec, velocity); // FM MD Kick/Snare/Hat
-    return;
-  }
-  if (laneId === "hiPerc" && hiPercVerbosVoice) {
+function buildTriggerStep(getState: GetState): TriggerStepFn {
+  return (
+    laneId: TrackId,
+    _stepIndex: number,
+    timeSec: number,
+    velocity: number,
+    accent: boolean,
+    pitchSemitones: number
+  ): void => {
+    if (!ctx) return;
+    const state = getState();
+    const ui = state.ui ?? {};
+
+    if (laneId === "hiPerc" && hiPercFmMdVoice) {
+      hiPercFmMdVoice.trigger(timeSec, velocity);
+      return;
+    }
+    if (laneId === "hiPerc" && hiPercVerbosVoice) {
+      const dest = laneGains[laneId];
+      if (dest) hiPercVerbosVoice.trigger(timeSec, velocity);
+      return;
+    }
+
+    const voice = laneVoices[laneId];
     const dest = laneGains[laneId];
-    if (dest) hiPercVerbosVoice.trigger(timeSec, velocity);
-    return;
-  }
-  const voice = laneVoices[laneId];
-  const dest = laneGains[laneId];
-  if (!voice || !dest) return;
-  const params: Record<string, unknown> =
-    laneId === "hiPerc" ? { freq: 400 } : laneId === "lowPerc" ? { freq: 280 } : laneId === "chord" ? { freq: 520 } : {};
-  if (laneId === "bass") (params as Record<string, number>).pitch = pitchSemitones;
-  voice(ctx, dest, timeSec, velocity, accent, Object.keys(params).length ? params : undefined);
+    if (!voice || !dest) return;
+
+    const params: Record<string, unknown> = {};
+    if (laneId === "kick" && ui.kickInstrument) {
+      const k = ui.kickInstrument;
+      params.pitch = k.pitch;
+      params.decay = k.decay;
+      params.punch = k.punch;
+      params.tone = k.tone;
+      params.drive = k.drive;
+      params.sub = k.sub;
+    } else if (laneId === "noise" && ui.noiseInstrument) {
+      const n = ui.noiseInstrument;
+      params.decay = n.decay;
+      params.tone = n.tone;
+      params.noise = n.noise;
+      params.hpf = n.hpf;
+    } else if (laneId === "lowPerc" && ui.lowPercInstrument) {
+      const p = ui.lowPercInstrument;
+      params.freq = 120 + p.tune * 600;
+      params.decay = p.decay;
+      params.punch = p.punch;
+      params.color = p.color;
+      params.shape = p.shape;
+      params.noise = p.noise;
+    } else if (laneId === "clap" && ui.clapInstrument) {
+      const c = ui.clapInstrument;
+      params.decay = c.decay;
+      params.snap = c.snap;
+      params.tone = c.tone;
+      params.stereo = c.stereo;
+      params.noise = c.noise;
+      params.body = c.body;
+    } else if (laneId === "chord" && ui.chordInstrument) {
+      const c = ui.chordInstrument;
+      params.freq = 200 + c.tone * 800;
+      params.decay = c.decay;
+      params.body = c.body;
+    } else if (laneId === "bass" && ui.bassInstrument) {
+      const b = ui.bassInstrument;
+      params.pitch = pitchSemitones + (b.pitch - 0.5) * 24;
+      params.cutoff = b.cutoff;
+      params.resonance = b.resonance;
+      params.decay = b.decay;
+      params.drive = b.drive;
+    } else if (laneId === "subPerc" && ui.subPercInstrument) {
+      const s = ui.subPercInstrument;
+      params.decay = s.decay;
+      params.tone = s.tone;
+      params.punch = s.punch;
+    }
+
+    if (laneId === "lowPerc" && !params.freq) params.freq = 280;
+    if (laneId === "chord" && !params.freq) params.freq = 520;
+    if (laneId === "bass" && params.pitch === undefined) (params as Record<string, number>).pitch = pitchSemitones;
+
+    voice(ctx, dest, timeSec, velocity, accent, Object.keys(params).length ? params : undefined);
+  };
 }
 
 export function userGestureInit(): void {
@@ -153,7 +212,7 @@ export function start(getState: GetState, onStepTrigger?: OnStepTriggerFn): void
   startScheduler(
     getState,
     () => ctx!.currentTime,
-    triggerStep,
+    buildTriggerStep(getState),
     onStepTrigger
   );
 }
