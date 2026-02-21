@@ -3,6 +3,7 @@ import { Header } from "./components/Header";
 import { MasterDockCollapsed, DOCK_HEIGHT } from "./components/MasterDockCollapsed";
 import { BottomSheet } from "./components/BottomSheet";
 import { FooterToolsPanel } from "./components/FooterToolsPanel";
+import { MiniMixer } from "./components/MiniMixer";
 import { GrooveGeneratorProvider, GrooveGeneratorBar } from "./components/GrooveGenerator";
 import { SequencerRow } from "./components/SequencerRow";
 import { InstrumentControlsPanel } from "./components/InstrumentControlsPanel";
@@ -319,6 +320,12 @@ export default function App() {
     audioEngine.setHiPercInstrumentState(state.ui.hiPercInstrument);
   }, [state.ui.hiPercInstrument]);
 
+  useEffect(() => {
+    audioEngine.syncLaneGains(state);
+  }, [state.ui.laneMuted, state.ui.laneGain]);
+
+  const [h3kSend, setH3kSend] = useState<Partial<Record<TrackId, number>>>({});
+
   const [masterExpanded, setMasterExpanded] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const saved = localStorage.getItem(STORAGE_KEY_MASTER);
@@ -512,10 +519,15 @@ export default function App() {
       <BottomSheet open={masterExpanded} onClose={() => setMasterExpanded(false)}>
         <FooterToolsPanel
           left={
-            <div className="flex flex-col gap-2 h-full">
-              <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-widest">Mini Mixer</span>
-              <p className="text-[11px] font-mono text-white/25">Channel strips + H3K send</p>
-            </div>
+            <MiniMixer
+              laneMuted={state.ui.laneMuted ?? {}}
+              laneGain={state.ui.laneGain ?? {}}
+              h3kSend={h3kSend}
+              onMuteToggle={(id) => actions.setLaneMuted(id, !(state.ui.laneMuted?.[id] ?? false))}
+              onGainChange={(id, gain) => actions.setLaneGain(id, gain)}
+              onH3kSendChange={(id, send) => setH3kSend((prev) => ({ ...prev, [id]: send }))}
+              onKillFx={() => {}}
+            />
           }
           center={
             <div className="flex flex-col gap-2 h-full">

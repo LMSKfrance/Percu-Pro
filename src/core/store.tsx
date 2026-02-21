@@ -136,6 +136,7 @@ type Action =
   | { type: "setCityProfile"; payload: string }
   | { type: "setLaneMuted"; payload: { laneId: TrackId; muted: boolean } }
   | { type: "setLaneVelocityScale"; payload: { laneId: TrackId; scale: number } }
+  | { type: "setLaneGain"; payload: { laneId: TrackId; gain: number } }
   | { type: "togglePlay" }
   | { type: "stop" }
   | { type: "toggleLoop" }
@@ -198,6 +199,17 @@ export function reducer(state: AppState, action: Action): AppState {
         ui: {
           ...state.ui,
           laneVelocityScale: { ...state.ui.laneVelocityScale, [laneId]: clamped },
+        },
+      };
+    }
+    case "setLaneGain": {
+      const { laneId, gain } = action.payload;
+      const clamped = Math.max(0, Math.min(1, gain));
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          laneGain: { ...state.ui.laneGain, [laneId]: clamped },
         },
       };
     }
@@ -372,6 +384,7 @@ type StoreValue = {
     setCityProfile: (cityProfile: string) => void;
     setLaneMuted: (laneId: TrackId, muted: boolean) => void;
     setLaneVelocityScale: (laneId: TrackId, scale: number) => void;
+    setLaneGain: (laneId: TrackId, gain: number) => void;
     togglePlay: () => void;
     stop: () => void;
     toggleLoop: () => void;
@@ -416,6 +429,7 @@ export function PercuProStoreProvider({ children }: { children: React.ReactNode 
     setCityProfile: useCallback((cityProfile: string) => dispatch({ type: "setCityProfile", payload: cityProfile }), []),
     setLaneMuted: useCallback((laneId: TrackId, muted: boolean) => dispatch({ type: "setLaneMuted", payload: { laneId, muted } }), []),
     setLaneVelocityScale: useCallback((laneId: TrackId, scale: number) => dispatch({ type: "setLaneVelocityScale", payload: { laneId, scale } }), []),
+    setLaneGain: useCallback((laneId: TrackId, gain: number) => dispatch({ type: "setLaneGain", payload: { laneId, gain } }), []),
     togglePlay: useCallback(() => dispatch({ type: "togglePlay" }), []),
     stop: useCallback(() => dispatch({ type: "stop" }), []),
     toggleLoop: useCallback(() => dispatch({ type: "toggleLoop" }), []),

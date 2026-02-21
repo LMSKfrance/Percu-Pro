@@ -112,6 +112,8 @@ export interface UiState {
   laneMuted: Partial<Record<TrackId, boolean>>;
   /** Per-lane velocity scale 0..1; when set, multiplies step velocity at play time (default 1) */
   laneVelocityScale?: Partial<Record<TrackId, number>>;
+  /** Per-lane fader gain 0..1 (default 1) */
+  laneGain?: Partial<Record<TrackId, number>>;
   /** Hi Perc (PERC1) instrument model + macros (optional; when absent, lane uses default perc) */
   hiPercInstrument?: HiPercInstrumentState;
   kickInstrument?: KickInstrumentState;

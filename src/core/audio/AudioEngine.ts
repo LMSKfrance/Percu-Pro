@@ -106,11 +106,16 @@ function ensureGraph(): boolean {
   return true;
 }
 
-function syncLaneGains(state: AppState): void {
+export function syncLaneGains(state: AppState): void {
+  if (!ctx) return;
   const muted = state.ui?.laneMuted ?? {};
+  const gains = state.ui?.laneGain ?? {};
+  const t = ctx.currentTime;
   for (const id of TRACK_IDS) {
     const g = laneGains[id];
-    if (g) g.gain.setValueAtTime(muted[id] ? 0 : 1, ctx!.currentTime);
+    if (!g) continue;
+    const gain = muted[id] ? 0 : (gains[id] ?? 1);
+    g.gain.setValueAtTime(gain, t);
   }
 }
 
