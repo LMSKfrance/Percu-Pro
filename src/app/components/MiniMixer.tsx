@@ -165,7 +165,7 @@ export function MiniMixer({
                 meterRms={meter.rms}
                 meterPeak={meter.peak}
               />
-              <div className="flex flex-col items-center gap-0.5">
+              <div className="flex flex-col items-center gap-0.5 min-h-[32px] justify-center">
                 <span className="text-[7px] font-mono text-white/30">H3K</span>
                 <input
                   type="range"
@@ -173,7 +173,7 @@ export function MiniMixer({
                   max={100}
                   value={(send * 100) | 0}
                   onChange={(e) => onH3kSendChange(id, Number(e.target.value) / 100)}
-                  className="w-10 h-1 accent-[#00D2FF] rounded-full bg-[#1F2128]"
+                  className="w-10 h-2 accent-[#00D2FF] rounded-full bg-[#1F2128] min-h-[28px] touch-manipulation"
                   aria-label={`H3K send ${SHORT_LABELS[id]}`}
                 />
               </div>

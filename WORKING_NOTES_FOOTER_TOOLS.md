@@ -35,6 +35,16 @@ PHASE 0 — INVENTORY (paths only, no code changes)
 - Backdrop: fixed inset 0; low opacity + blur; click closes; ESC closes.
 - App shell: padding-bottom: calc(var(--footer-h) + 16px). --header-h: 80px for max-height calc.
 
-## Phase 2–8
+## Phase 2 — Done: simplified footer bar (transport, BPM, Export, chevron)
 
-(TBD as we implement.)
+## Phase 3 — Done: FooterToolsPanel 3-column grid (mixer | H3K | master)
+
+## Phase 4 — Done: MiniMixer with lane faders, M/S, H3K send; lane gain in store + syncLaneGains
+
+## Phase 5 — Done: AnalyserNode per channel + master, getMeterLevels(), useMeterLevels() 30fps
+
+## Phase 6 — Done: h3kRack.ts (microPitch, dual delay, diffusion), per-channel send gains, sumGain in engine
+
+## Phase 7 — Done: H3K sends/params wired; export path unchanged (sumGain → saturator → destination)
+
+## Phase 8 — Done: Hit targets 28–32px, rounded-md + soft shadows, scroll position session memory

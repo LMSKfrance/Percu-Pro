@@ -364,8 +364,8 @@ export function MasterDockCollapsed({
           </button>
           <button
             onClick={isExpanded ? onCollapse : onExpand}
-            className="w-9 h-9 rounded-full border border-[#1F2128] flex items-center justify-center hover:bg-white/[0.04] hover:border-white/10 transition-colors text-white/40 hover:text-white/60"
-            aria-label={isExpanded ? "Collapse master section" : "Expand master section"}
+            className="min-w-[32px] min-h-[32px] w-9 h-9 rounded-full border border-[#1F2128] flex items-center justify-center hover:bg-white/[0.04] hover:border-white/10 transition-colors text-white/40 hover:text-white/60"
+            aria-label={isExpanded ? "Collapse tools" : "Expand tools"}
           >
             {isExpanded ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
           </button>

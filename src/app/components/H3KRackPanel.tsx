@@ -3,8 +3,6 @@
 import React, { useState } from "react";
 import type { H3KRackParams } from "../../audio/fx/h3kRack";
 
-const PARAM_SMOOTH = 0.03;
-
 export type H3KRackPanelProps = {
   params: H3KRackParams;
   onParamsChange: (p: Partial<H3KRackParams>) => void;
@@ -25,8 +23,8 @@ export function H3KRackPanel({
 }: H3KRackPanelProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  const macro = (label: string, value: number, onChange: (v: number) => void, min = 0, max = 1) => (
-    <div key={label} className="flex flex-col items-center gap-1">
+  const macro = (label: string, value: number, onChange: (v: number) => void) => (
+    <div key={label} className="flex flex-col items-center gap-1 min-h-[32px] justify-center">
       <span className="text-[8px] font-mono text-white/50 uppercase tracking-wider">{label}</span>
       <input
         type="range"
@@ -34,7 +32,8 @@ export function H3KRackPanel({
         max={100}
         value={value * 100}
         onChange={(e) => onChange(Number(e.target.value) / 100)}
-        className="w-16 h-1.5 accent-[#00D2FF] rounded-full bg-[#1F2128]"
+        className="w-16 h-2 accent-[#00D2FF] rounded-full bg-[#1F2128] min-h-[28px] touch-manipulation"
+        style={{ minWidth: 64 }}
         aria-label={label}
       />
     </div>
