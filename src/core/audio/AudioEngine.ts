@@ -98,10 +98,11 @@ function ensureGraph(): boolean {
 
   sumGain = ctx.createGain();
   sumGain.gain.value = 1;
-  masterFxInput.connect(sumGain!);
+  // Bypass all master FX: dry path only (saturator, compressor, hpf, H3K rack left in place for UI only)
+  masterFxInput.connect(masterGain!);
   h3kRack = createH3KRack(ctx);
   h3kRack.output.connect(sumGain!);
-  sumGain!.connect(saturator!);
+  // sumGain / saturator / compressor / hpf not in signal path
 
   saturator!.connect(compressor);
   compressor!.connect(hpf);
