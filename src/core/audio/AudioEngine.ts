@@ -55,6 +55,9 @@ let compressor: DynamicsCompressorNode | null = null;
 let hpf: BiquadFilterNode | null = null;
 let laneGains: Record<TrackId, GainNode> = {} as Record<TrackId, GainNode>;
 let masterFxInput: GainNode | null = null;
+const FFT_SIZE = 256;
+let channelAnalysers: Record<TrackId, AnalyserNode> = {} as Record<TrackId, AnalyserNode>;
+let masterAnalyser: AnalyserNode | null = null;
 
 let hiPercVerbosVoice: VerbosDsiFmPercVoice | null = null;
 let hiPercFmMdVoice: FmDrumVoice | FmSnareVoice | null = null;
@@ -100,10 +103,50 @@ function ensureGraph(): boolean {
     g.gain.value = 1;
     g.connect(masterFxInput!);
     laneGains[id] = g;
+    const anal = ctx.createAnalyser();
+    anal.fftSize = FFT_SIZE;
+    anal.smoothingTimeConstant = 0.6;
+    g.connect(anal);
+    channelAnalysers[id] = anal;
   }
+
+  masterAnalyser = ctx.createAnalyser();
+  masterAnalyser.fftSize = FFT_SIZE;
+  masterAnalyser.smoothingTimeConstant = 0.6;
+  masterGain.connect(masterAnalyser);
 
   buildVoiceMap();
   return true;
+}
+
+function computeRmsPeak(analyser: AnalyserNode): { rms: number; peak: number } {
+  const data = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(data);
+  let sum = 0;
+  let peak = 0;
+  for (let i = 0; i < data.length; i++) {
+    const x = data[i];
+    sum += x * x;
+    const a = Math.abs(x);
+    if (a > peak) peak = a;
+  }
+  const rms = Math.sqrt(sum / data.length);
+  return { rms, peak };
+}
+
+export type MeterLevels = {
+  channels: Record<TrackId, { rms: number; peak: number }>;
+  master: { rms: number; peak: number };
+};
+
+export function getMeterLevels(): MeterLevels {
+  const channels = {} as Record<TrackId, { rms: number; peak: number }>;
+  for (const id of TRACK_IDS) {
+    const a = channelAnalysers[id];
+    channels[id] = a ? computeRmsPeak(a) : { rms: 0, peak: 0 };
+  }
+  const master = masterAnalyser ? computeRmsPeak(masterAnalyser) : { rms: 0, peak: 0 };
+  return { channels, master };
 }
 
 export function syncLaneGains(state: AppState): void {
@@ -379,5 +422,7 @@ export function dispose(): void {
   hpf = null;
   masterFxInput = null;
   laneGains = {} as Record<TrackId, GainNode>;
+  channelAnalysers = {} as Record<TrackId, AnalyserNode>;
+  masterAnalyser = null;
   sharedNoise.buffer = null;
 }

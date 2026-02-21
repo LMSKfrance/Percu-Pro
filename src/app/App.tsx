@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { usePercuProV1Store } from "../core/store";
+import { useMeterLevels } from "./hooks/useMeterLevels";
 import type { TrackId, AppState } from "../core/types";
 import { STEPS_PER_BAR } from "../core/patternTypes";
 import * as audioEngine from "../core/audio/AudioEngine";
@@ -325,6 +326,7 @@ export default function App() {
   }, [state.ui.laneMuted, state.ui.laneGain]);
 
   const [h3kSend, setH3kSend] = useState<Partial<Record<TrackId, number>>>({});
+  const meterLevels = useMeterLevels();
 
   const [masterExpanded, setMasterExpanded] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -527,6 +529,8 @@ export default function App() {
               onGainChange={(id, gain) => actions.setLaneGain(id, gain)}
               onH3kSendChange={(id, send) => setH3kSend((prev) => ({ ...prev, [id]: send }))}
               onKillFx={() => {}}
+              meterLevels={meterLevels.channels}
+              masterMeter={meterLevels.master}
             />
           }
           center={
