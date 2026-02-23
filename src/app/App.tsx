@@ -496,7 +496,7 @@ export default function App() {
                 ? lane.steps.map((s) => s.on)
                 : [...EMPTY_STEPS];
               const velocities = lane?.steps?.length === STEPS_PER_BAR
-                ? lane.steps.map((s) => Math.round(s.velocity * 100))
+                ? lane.steps.map((s) => Math.round(s.velocity * 127))
                 : [...DEFAULT_VELS];
               const accents = lane?.steps?.length === STEPS_PER_BAR
                 ? lane.steps.map((s) => s.accent)
@@ -520,7 +520,7 @@ export default function App() {
                   accents={accents}
                   pitches={pitches}
                   currentStepIndex={currentStepIndex}
-                  onVelocityChange={(i, v) => actions.setStepVelocity(track.id, i, Math.max(0.15, Math.min(1, v / 100)))}
+                  onVelocityChange={(i, v) => actions.setStepVelocity(track.id, i, Math.max(0.15, Math.min(1, v / 127)))}
                   onPitchChange={(i, p) => actions.setStepPitch(track.id, i, p)}
                   onStepAdd={(i) => actions.setStepOn(track.id, i)}
                   onStepClear={(i) => actions.clearStep(track.id, i)}

@@ -1,11 +1,16 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { StepButton } from "./StepButton";
+import { ModValue } from "./ModValue";
+import { ToolValue } from "./ToolValue";
 import { ChevronRight, ChevronLeft, ChevronDown, Power, Shuffle } from "lucide-react";
 import { Knob } from "./Knob";
 import { cn } from "../../lib/utils";
 import type { TrackId } from "../../core/types";
 import { quantizeToScale } from "../../core/scale";
+
+const STEP_GRID_CLASS = "grid gap-1.5 flex-1 min-w-[500px]";
+const STEP_GRID_STYLE: React.CSSProperties = { gridTemplateColumns: "repeat(16, minmax(0, 1fr))" };
 
 const DEFAULT_STEPS = new Array(16).fill(false);
 const DEFAULT_VELS = new Array(16).fill(100);
@@ -27,6 +32,11 @@ const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", 
 function semitoneToNote(p: number): string {
   const i = ((p % 12) + 12) % 12;
   return NOTE_NAMES[i];
+}
+function formatPitchForTooltip(p: number): string {
+  const note = semitoneToNote(p);
+  const key = p === 0 ? "0" : p > 0 ? `+${p}` : `${p}`;
+  return `${note} ${key}`;
 }
 
 /** Base hue per note (0–11). Same note in different octaves = same hue, different lightness. */
@@ -171,6 +181,58 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
 
   const pitchBarDragRef = React.useRef<{ index: number; startY: number; startPitch: number; didMove: boolean } | null>(null);
   const modBarDragRef = React.useRef<{ lane: ModLaneKey; index: number; startY: number; startVal: number } | null>(null);
+  const velocityBarDragRef = React.useRef<{ index: number; startY: number; startVel: number } | null>(null);
+  const [velocityBarDraggingIndex, setVelocityBarDraggingIndex] = useState<number | null>(null);
+  const [pitchBarDraggingIndex, setPitchBarDraggingIndex] = useState<number | null>(null);
+  const [modBarDragging, setModBarDragging] = useState<{ lane: ModLaneKey; index: number } | null>(null);
+  const [dragTooltip, setDragTooltip] = useState<{ label: string; value: string } | null>(null);
+
+  /** Hide cursor while dragging any mod line (velocity, pitch, mod bars) so drag continues reliably when pointer leaves the bar. */
+  const isDraggingAnyModLine = velocityBarDraggingIndex !== null || pitchBarDraggingIndex !== null || modBarDragging !== null;
+  React.useEffect(() => {
+    if (!isDraggingAnyModLine) return;
+    const prev = document.body.style.cursor;
+    document.body.style.cursor = "none";
+    return () => { document.body.style.cursor = prev; };
+  }, [isDraggingAnyModLine]);
+
+  /** Velocity in expanded lane: 0–127 (MIDI). Pointer capture so drag continues when pointer moves into steps area. */
+  const handleVelocityBarPointerDown = (index: number, e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const relY = 1 - (e.clientY - rect.top) / rect.height;
+    const clickVel = Math.round(Math.max(0, Math.min(127, relY * 127)));
+    handleVelocityChange(index, clickVel);
+    velocityBarDragRef.current = { index, startY: e.clientY, startVel: clickVel };
+    setVelocityBarDraggingIndex(index);
+    setDragTooltip({ label: "Velocity", value: String(clickVel) });
+    target.setPointerCapture(e.pointerId);
+    const onMove = (ev: PointerEvent) => {
+      ev.preventDefault();
+      if (!velocityBarDragRef.current || velocityBarDragRef.current.index !== index) return;
+      const deltaY = velocityBarDragRef.current.startY - ev.clientY;
+      const step = 2;
+      const delta = Math.round(deltaY / 8) * step;
+      const maxDeltaPerMove = 12;
+      const clampedDelta = Math.max(-maxDeltaPerMove, Math.min(maxDeltaPerMove, delta));
+      const newVel = Math.max(0, Math.min(127, velocityBarDragRef.current.startVel + clampedDelta));
+      handleVelocityChange(index, newVel);
+      velocityBarDragRef.current = { index, startY: ev.clientY, startVel: newVel };
+      setDragTooltip((prev) => (prev ? { ...prev, value: String(newVel) } : null));
+    };
+    const onUp = (ev: PointerEvent) => {
+      target.releasePointerCapture(ev.pointerId);
+      target.removeEventListener("pointermove", onMove);
+      target.removeEventListener("pointerup", onUp);
+      velocityBarDragRef.current = null;
+      setVelocityBarDraggingIndex(null);
+      setDragTooltip(null);
+    };
+    target.addEventListener("pointermove", onMove, { passive: false });
+    target.addEventListener("pointerup", onUp);
+  };
 
   const toggleModLane = (key: ModLaneKey) => {
     setExpandedModLane((prev) => (prev === key ? null : key));
@@ -185,16 +247,19 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
     });
   };
 
-  const handleModBarMouseDown = (lane: ModLaneKey, index: number, e: React.MouseEvent) => {
+  const handleModBarPointerDown = (lane: ModLaneKey, index: number, e: React.PointerEvent) => {
     e.preventDefault();
     const target = e.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
     const relY = 1 - (e.clientY - rect.top) / rect.height;
     const clickVal = Math.max(0, Math.min(1, relY));
     setModLaneValue(lane, index, clickVal);
-    const vals = modLaneValues[lane] ?? DEFAULT_MOD_LANE;
     modBarDragRef.current = { lane, index, startY: e.clientY, startVal: clickVal };
-    const onMove = (ev: MouseEvent) => {
+    setModBarDragging({ lane, index });
+    const laneLabel = lane.charAt(0).toUpperCase() + lane.slice(1);
+    setDragTooltip({ label: `Mod - ${laneLabel}`, value: String(Math.round(clickVal * 127)) });
+    target.setPointerCapture(e.pointerId);
+    const onMove = (ev: PointerEvent) => {
       if (!modBarDragRef.current || modBarDragRef.current.lane !== lane || modBarDragRef.current.index !== index) return;
       const deltaY = modBarDragRef.current.startY - ev.clientY;
       const step = 0.02;
@@ -202,20 +267,29 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
       const newVal = Math.max(0, Math.min(1, modBarDragRef.current.startVal + delta));
       setModLaneValue(lane, index, newVal);
       modBarDragRef.current = { ...modBarDragRef.current, startY: ev.clientY, startVal: newVal };
+      setDragTooltip((prev) => (prev ? { ...prev, value: String(Math.round(newVal * 127)) } : null));
     };
-    const onUp = () => {
+    const onUp = (ev: PointerEvent) => {
+      target.releasePointerCapture(ev.pointerId);
+      target.removeEventListener("pointermove", onMove);
+      target.removeEventListener("pointerup", onUp);
       modBarDragRef.current = null;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      setModBarDragging(null);
+      setDragTooltip(null);
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    target.addEventListener("pointermove", onMove);
+    target.addEventListener("pointerup", onUp);
   };
 
-  const handlePitchBarMouseDown = (index: number, e: React.MouseEvent) => {
+  const handlePitchBarPointerDown = (index: number, e: React.PointerEvent) => {
     e.preventDefault();
-    pitchBarDragRef.current = { index, startY: e.clientY, startPitch: pitchStepsResolved[index] ?? 0, didMove: false };
-    const onMove = (ev: MouseEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    const startPitch = pitchStepsResolved[index] ?? 0;
+    pitchBarDragRef.current = { index, startY: e.clientY, startPitch, didMove: false };
+    setPitchBarDraggingIndex(index);
+    setDragTooltip({ label: "Pitch", value: formatPitchForTooltip(startPitch) });
+    target.setPointerCapture(e.pointerId);
+    const onMove = (ev: PointerEvent) => {
       if (!pitchBarDragRef.current || pitchBarDragRef.current.index !== index) return;
       pitchBarDragRef.current.didMove = true;
       const deltaY = pitchBarDragRef.current.startY - ev.clientY;
@@ -228,18 +302,22 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
         pitchBarDragRef.current.startPitch = value;
         if (onPitchChange) onPitchChange(pitchBarDragRef.current.index, value);
         else setPitchSteps((prev) => { const next = [...prev]; next[pitchBarDragRef.current!.index] = value; return next; });
+        setDragTooltip((prev) => (prev ? { ...prev, value: formatPitchForTooltip(value) } : null));
       }
     };
-    const onUp = () => {
+    const onUp = (ev: PointerEvent) => {
       const hadMovement = pitchBarDragRef.current?.didMove ?? false;
       const idx = pitchBarDragRef.current?.index ?? index;
+      target.releasePointerCapture(ev.pointerId);
+      target.removeEventListener("pointermove", onMove);
+      target.removeEventListener("pointerup", onUp);
       pitchBarDragRef.current = null;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      setPitchBarDraggingIndex(null);
+      setDragTooltip(null);
       if (!hadMovement) handlePitchDelta(idx, 1);
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    target.addEventListener("pointermove", onMove);
+    target.addEventListener("pointerup", onUp);
   };
 
   return (
@@ -312,24 +390,28 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
           <button type="button" className="p-1.5 text-[#121212]/15 hover:text-[#E66000] transition-colors"><ChevronRight size={16} /></button>
         </div>
 
-        {/* 16-Step Grid — same flex as expanded bar strip so columns align with velocity/pitch/step numbers */}
-        <div className="flex flex-1 gap-1.5 min-w-[500px]">
-          {activeSteps.map((active, i) => (
-            <StepButton 
-              key={i}
-              index={i}
-              active={active ?? false}
-              muted={isMuted}
-              accented={controlledAccents?.[i] ?? (i % 4 === 0)}
-              velocity={velocities[i] ?? 100}
-              isCurrentStep={currentStepIndex === i}
-              onClick={!usePatchCallbacks ? () => toggleStep(i) : undefined}
-              onVelocityChange={(val) => handleVelocityChange(i, val)}
-              onAdd={usePatchCallbacks ? () => { onStepAdd?.(i); onActivate?.(); } : undefined}
-              onClear={usePatchCallbacks ? () => { onStepClear?.(i); onActivate?.(); } : undefined}
-              onAccentToggle={usePatchCallbacks ? () => { onStepAccentToggle?.(i); onActivate?.(); } : undefined}
-            />
-          ))}
+        {/* 16-Step Grid — same grid as expanded bar strip so columns align with velocity/pitch/step numbers */}
+        <div className={STEP_GRID_CLASS} style={STEP_GRID_STYLE}>
+          {activeSteps.map((active, i) => {
+            const editingModValueStepIndex = velocityBarDraggingIndex ?? pitchBarDraggingIndex ?? modBarDragging?.index ?? -1;
+            return (
+              <StepButton
+                key={i}
+                index={i}
+                active={active ?? false}
+                muted={isMuted}
+                accented={controlledAccents?.[i] ?? (i % 4 === 0)}
+                velocity={velocities[i] ?? 100}
+                isCurrentStep={currentStepIndex === i}
+                isEditingModValue={editingModValueStepIndex === i}
+                onClick={!usePatchCallbacks ? () => toggleStep(i) : undefined}
+                onVelocityChange={(val) => handleVelocityChange(i, val)}
+                onAdd={usePatchCallbacks ? () => { onStepAdd?.(i); onActivate?.(); } : undefined}
+                onClear={usePatchCallbacks ? () => { onStepClear?.(i); onActivate?.(); } : undefined}
+                onAccentToggle={usePatchCallbacks ? () => { onStepAccentToggle?.(i); onActivate?.(); } : undefined}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -347,8 +429,8 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
               <div className="w-[240px] flex-none flex-shrink-0" aria-hidden />
               <div className="w-[76px] flex-none flex-shrink-0" aria-hidden />
 
-              {/* Bar strip: same width as main row step grid (flex-1 + min-w) so velocity/pitch/step numbers align with steps */}
-              <div className="flex-1 min-w-[500px] flex flex-col gap-3 min-h-0">
+              {/* Bar strip: same 16-column grid as main row so velocity/pitch/mod/step numbers align with seq steps */}
+              <div className="flex-1 min-w-[500px] flex flex-col gap-3 min-h-0 min-w-0">
                 <div className="flex items-center justify-between flex-none flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-[#121212]/50">
                     {onLaneSwingChange != null && laneSwingPct != null && (
@@ -463,95 +545,100 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 min-w-0 min-h-0 flex-1">
-                  {/* Velocity bars: height reduced by 30% (132 → 92) */}
-                  <div className="h-[92px] min-w-0 flex items-end gap-1.5">
-                    {[...Array(16)].map((_, i) => (
-                      <div key={i} className="flex-1 min-w-0 h-full">
-                        <div className="w-full h-full bg-[#121212]/18 rounded-[2px] relative overflow-hidden">
+                <div className={cn("flex-1 min-w-0 min-h-0 grid gap-x-1.5 gap-y-3")} style={STEP_GRID_STYLE}>
+                  {/* Row 1: Velocity mod value line (0–127), aligned with seq steps */}
+                  {[...Array(16)].map((_, i) => {
+                    const vel127 = Math.max(0, Math.min(127, velocities[i] ?? 100));
+                    return (
+                      <div key={`vel-${i}`} className="relative h-[64px] min-w-0 w-full">
+                        <ToolValue
+                          show={dragTooltip != null && velocityBarDraggingIndex === i}
+                          label={dragTooltip?.label ?? ""}
+                          value={dragTooltip?.value ?? ""}
+                        />
+                        <ModValue
+                          value={vel127}
+                          isDragging={velocityBarDraggingIndex === i}
+                          onPointerDown={(e) => handleVelocityBarPointerDown(i, e)}
+                          ariaValuenow={vel127}
+                        />
+                      </div>
+                    );
+                  })}
+                  {/* Row 2: Pitch (notes) — same grid columns */}
+                  {[...Array(16)].map((_, i) => {
+                    const p = pitchStepsResolved[i] ?? 0;
+                    const fillPercent = Math.max(4, Math.min(100, ((p - PITCH_MIN) / (PITCH_MAX - PITCH_MIN)) * 100));
+                    const keyLabel = p === 0 ? "0" : p > 0 ? `+${p}` : `${p}`;
+                    const noteName = semitoneToNote(p);
+                    const fillColor = getNoteColor(p);
+                    return (
+                      <div key={`pitch-${i}`} className="relative h-[64px] min-w-0 w-full flex flex-col">
+                        <ToolValue
+                          show={dragTooltip != null && pitchBarDraggingIndex === i}
+                          label={dragTooltip?.label ?? ""}
+                          value={dragTooltip?.value ?? ""}
+                        />
+                        <div
+                          className={cn(
+                            "w-full flex-1 min-h-0 bg-[#121212]/18 rounded-[2px] relative overflow-hidden cursor-ns-resize select-none border hover:border-[#121212]/15 flex flex-col items-center justify-center",
+                            pitchBarDraggingIndex === i ? "border-[#7DD3FC] ring-2 ring-[#7DD3FC]/50 ring-inset" : "border-transparent"
+                          )}
+                          onPointerDown={(e) => handlePitchBarPointerDown(i, e)}
+                          onDoubleClick={(e) => { e.preventDefault(); handlePitchReset(i); }}
+                          role="slider"
+                          aria-valuenow={p}
+                          aria-valuemin={PITCH_MIN}
+                          aria-valuemax={PITCH_MAX}
+                        >
                           <div
-                            className="absolute bottom-0 left-0 right-0 bg-[#E66000] rounded-[2px] transition-[height] duration-100"
-                            style={{ height: `${Math.max(4, velocities[i] ?? 100)}%` }}
+                            className="absolute bottom-0 left-0 right-0 rounded-[2px] transition-[height] duration-100 bg-[#7DD3FC]"
+                            style={{ height: `${fillPercent}%` }}
                           />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Pitch bars: -24..+24, note name in center (white circle, bigger font), semitone at bottom; fill by note color (lighter/darker per octave) */}
-                  <div className="h-[92px] min-w-0 flex items-end gap-1.5">
-                    {[...Array(16)].map((_, i) => {
-                      const p = pitchStepsResolved[i] ?? 0;
-                      const fillPercent = Math.max(4, Math.min(100, ((p - PITCH_MIN) / (PITCH_MAX - PITCH_MIN)) * 100));
-                      const keyLabel = p === 0 ? "0" : p > 0 ? `+${p}` : `${p}`;
-                      const noteName = semitoneToNote(p);
-                      const fillColor = getNoteColor(p);
-                      return (
-                        <div key={i} className="flex-1 min-w-0 h-full flex flex-col">
-                          <div
-                            className="w-full flex-1 min-h-0 bg-[#121212]/18 rounded-[2px] relative overflow-hidden cursor-ns-resize select-none border border-transparent hover:border-[#121212]/15 flex flex-col items-center justify-center"
-                            onMouseDown={(e) => handlePitchBarMouseDown(i, e)}
-                            onDoubleClick={(e) => { e.preventDefault(); handlePitchReset(i); }}
-                            role="slider"
-                            aria-valuenow={p}
-                            aria-valuemin={PITCH_MIN}
-                            aria-valuemax={PITCH_MAX}
+                          <span
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#E8E4DC] text-[8px] font-mono font-bold text-[#121212]/80 pointer-events-none z-10 border-[2.5px] border-solid"
+                            style={{ borderColor: fillColor }}
                           >
-                            <div
-                              className="absolute bottom-0 left-0 right-0 rounded-[2px] transition-[height] duration-100 bg-[#7DD3FC]"
-                              style={{ height: `${fillPercent}%` }}
-                            />
-                            <span
-                              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#E8E4DC] text-[8px] font-mono font-bold text-[#121212]/80 pointer-events-none z-10 border-[2.5px] border-solid"
-                              style={{ borderColor: fillColor }}
-                            >
-                              {noteName}
-                            </span>
-                            <span className="absolute bottom-0.5 left-0 right-0 text-center text-[7px] font-mono font-bold text-[#121212]/60 tabular-nums pointer-events-none z-10">
-                              {keyLabel}
-                            </span>
-                          </div>
+                            {noteName}
+                          </span>
+                          <span className="absolute bottom-0.5 left-0 right-0 text-center text-[7px] font-mono font-bold text-[#121212]/60 tabular-nums pointer-events-none z-10">
+                            {keyLabel}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                  {/* Modulation lane: expandable row of 16 vertical bars (same style as velocity) for the selected control */}
-                  {expandedModLane != null && (
-                    <div className="flex flex-col gap-1 min-w-0">
-                      <span className="text-[7px] font-mono font-bold text-[#121212]/40 tracking-wider uppercase">
-                        Mod: {expandedModLane}
-                      </span>
-                      <div className="h-[92px] min-w-0 flex items-end gap-1.5">
-                        {[...Array(16)].map((_, i) => {
-                          const val = modLaneValues[expandedModLane]?.[i] ?? 0.5;
-                          const heightPct = Math.max(4, Math.round(val * 100));
-                          return (
-                            <div key={i} className="flex-1 min-w-0 h-full">
-                              <div
-                                className="w-full h-full bg-[#121212]/18 rounded-[2px] relative overflow-hidden cursor-ns-resize select-none border border-transparent hover:border-[#121212]/20"
-                                onMouseDown={(e) => handleModBarMouseDown(expandedModLane, i, e)}
-                                role="slider"
-                                aria-valuenow={val}
-                                aria-valuemin={0}
-                                aria-valuemax={1}
-                              >
-                                <div
-                                  className="absolute bottom-0 left-0 right-0 bg-[#E66000] rounded-[2px] transition-[height] duration-100"
-                                  style={{ height: `${heightPct}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
                       </div>
-                    </div>
-                  )}
-                  <div className="flex gap-1.5 min-w-0">
-                    {[...Array(16)].map((_, i) => (
-                      <span key={i} className="flex-1 min-w-0 text-[7px] font-mono font-bold text-[#121212]/30 tabular-nums text-center">{i + 1}</span>
-                    ))}
-                  </div>
+                    );
+                  })}
+                  {/* Row 3: Modulation lane (0–127) when expanded — same grid columns */}
+                  {expandedModLane != null
+                    ? [...Array(16)].map((_, i) => {
+                        const val = modLaneValues[expandedModLane]?.[i] ?? 0.5;
+                        const val127 = Math.round(val * 127);
+                        return (
+                          <div key={`mod-${i}`} className="relative h-[64px] min-w-0 w-full">
+                            <ToolValue
+                              show={dragTooltip != null && modBarDragging?.lane === expandedModLane && modBarDragging?.index === i}
+                              label={dragTooltip?.label ?? ""}
+                              value={dragTooltip?.value ?? ""}
+                            />
+                            <ModValue
+                              value={val127}
+                              isDragging={modBarDragging?.lane === expandedModLane && modBarDragging?.index === i}
+                              onPointerDown={(e) => handleModBarPointerDown(expandedModLane, i, e)}
+                              ariaValuenow={val127}
+                              ariaValuemax={127}
+                            />
+                          </div>
+                        );
+                      })
+                    : [...Array(16)].map((_, i) => <div key={`mod-empty-${i}`} className="min-w-0 w-full h-0 overflow-hidden" aria-hidden />)}
+                  {/* Row 4: Step numbers (1–16) aligned with seq steps */}
+                  {[...Array(16)].map((_, i) => (
+                    <span key={`step-${i}`} className="min-w-0 w-full text-[7px] font-mono font-bold text-[#121212]/30 tabular-nums text-center py-0.5">
+                      {i + 1}
+                    </span>
+                  ))}
                   {/* Track empty space: scale and options bottom-aligned to note lines */}
-                  <div className="flex-1 min-h-[40px] flex flex-col justify-end pt-2">
+                  <div className="col-span-full flex-1 min-h-[40px] flex flex-col justify-end pt-2">
                     <div
                       onClick={(e) => e.stopPropagation()}
                       className="flex items-center gap-2 flex-wrap border-t border-[#121212]/08 pt-2"

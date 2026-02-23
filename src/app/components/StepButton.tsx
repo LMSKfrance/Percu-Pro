@@ -9,6 +9,8 @@ export interface StepButtonProps {
   accented?: boolean;
   /** Playhead: step is currently playing (DAW-style). */
   isCurrentStep?: boolean;
+  /** When true, a ModValue for this step is being edited (click-hold); show subtle yellow border. */
+  isEditingModValue?: boolean;
   onClick?: () => void;
   index: number;
   velocity: number;
@@ -26,6 +28,7 @@ export const StepButton: React.FC<StepButtonProps> = ({
   muted = false,
   accented = false,
   isCurrentStep = false,
+  isEditingModValue = false,
   onClick,
   index,
   velocity,
@@ -130,7 +133,9 @@ export const StepButton: React.FC<StepButtonProps> = ({
           accented && !active && "border-[#4d4d4d] bg-[#353535]",
           isDragging && "ring-1 ring-white/30 z-20",
           // Playhead (current step when playing)
-          isCurrentStep && "ring-2 ring-[#00D2FF] ring-inset z-10"
+          isCurrentStep && "ring-2 ring-[#00D2FF] ring-inset z-10",
+          // ModValue being edited (click-hold) — subtle yellow border
+          isEditingModValue && "ring-2 ring-amber-400/60 ring-inset border-amber-400/40"
         )}
         style={{
           backgroundColor: showAsActive ? `rgba(230, 96, 0, ${velocityOpacity})` : showAsMutedTrigger ? `rgba(80, 80, 80, ${mutedOpacity})` : undefined,
