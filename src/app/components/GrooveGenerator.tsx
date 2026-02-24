@@ -1,16 +1,15 @@
 import React, { useState, createContext, useContext, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { 
   Sparkles, 
-  Drum,
   ChevronLeft,
   ChevronRight,
   Layers, 
   Zap,
-  RefreshCcw
 } from "lucide-react";
 import { cn, CONTROL_STRIP_STYLE } from "../../lib/utils";
+import { Knob } from "./Knob";
 import { usePercuProV1Store } from "../../core/store";
 import { createInitialPatternState, applyPatternPatch, type PatternState } from "../../core/patternTypes";
 import type { GrooveCandidate, AppState } from "../../core/types";
@@ -254,54 +253,10 @@ export function GrooveGeneratorProvider({ children }: { children: React.ReactNod
   );
 }
 
-/** Generate Groove button + Seed (no <>). For use in Header. */
+/** Header center slot: Generate Groove button + Seed removed; container kept with id for adding a new button later. */
 export const GrooveGeneratorHeaderBlock: React.FC = () => {
-  const { seed, handleGenerate, isGenerating } = useGrooveGenerator();
   return (
-    <div className="flex items-center gap-4 justify-center shrink-0">
-      <button
-        onClick={handleGenerate}
-        disabled={isGenerating}
-        className={cn(
-          "h-11 px-6 rounded-[6px] flex items-center gap-3 transition-all duration-300 relative overflow-hidden group",
-          isGenerating ? "bg-[#181818] scale-95" : "bg-[#181818] hover:bg-[#2a2a2a] shadow-lg shadow-[#181818]/10"
-        )}
-      >
-        <AnimatePresence mode="wait">
-          {isGenerating ? (
-            <motion.div
-              key="loading"
-              initial={{ rotate: 0 }}
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 0.5, ease: "linear" }}
-            >
-              <RefreshCcw size={16} className="text-[#E66000]" />
-            </motion.div>
-          ) : (
-            <motion.div key="icon" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-              <Drum size={16} className="text-[#E66000]" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <span className="text-[12px] font-sans font-bold text-white uppercase tracking-widest">
-          Generate Groove
-        </span>
-        <motion.div
-          className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
-          animate={{ left: isGenerating ? "100%" : "-100%" }}
-          transition={{ duration: 0.8 }}
-        />
-      </button>
-      <div className="h-8 w-px bg-[#121212]/08" aria-hidden />
-      <div className="flex flex-col items-center">
-        <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#121212]/20 mb-1">Seed</span>
-        <div className="flex items-center justify-center bg-[#121212]/03 border border-[#121212]/05 rounded-[4px] px-3 py-1.5 min-w-[3ch]">
-          <span className="text-[11px] font-mono font-medium text-[#121212]/80 tabular-nums">
-            {seed}
-          </span>
-        </div>
-      </div>
-    </div>
+    <div id="groove-generator-header-block" className="flex items-center gap-4 justify-center shrink-0" />
   );
 };
 
@@ -433,48 +388,42 @@ export const GrooveGeneratorBar: React.FC = () => {
           </div>
         </div>
         {dropdownContent}
-        <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-8 max-w-[420px] content-end">
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center text-[9px] font-mono font-bold uppercase tracking-widest h-4">
+        <div className="flex-1 min-w-0 flex items-end gap-x-8 max-w-[320px]">
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="flex justify-between items-center text-[9px] font-mono font-bold uppercase tracking-widest w-full px-0.5">
               <span className="text-[#121212]/20 flex items-center gap-1.5"><Layers size={10} /> Complexity</span>
-              <span className="text-[#E66000]">{complexity}%</span>
+              <span className="text-[#E66000] tabular-nums">{complexity}%</span>
             </div>
-            <div className="relative h-2 w-full rounded-[2px] overflow-hidden cursor-pointer bg-[#121212]/12">
-              <motion.div 
-                className="absolute left-0 top-0 h-full bg-[#181818] rounded-[2px]"
-                animate={{ width: `${complexity}%` }}
-              />
-              <input 
-                type="range" 
-                className="absolute inset-0 opacity-0 cursor-pointer w-full"
-                value={complexity}
-                onChange={(e) => setComplexity(parseInt(e.target.value))}
-              />
-            </div>
+            <Knob
+              value={complexity}
+              min={0}
+              max={100}
+              onChange={(v) => setComplexity(Math.round(v))}
+              size={28}
+              accentColor="#E66000"
+              variant="light"
+            />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center text-[9px] font-mono font-bold uppercase tracking-widest h-4">
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="flex justify-between items-center text-[9px] font-mono font-bold uppercase tracking-widest w-full px-0.5">
               <span className="text-[#121212]/20 flex items-center gap-1.5"><Zap size={10} /> Velocity Variation</span>
-              <span className="text-[#00D2FF]">{intensity}%</span>
+              <span className="text-[#00D2FF] tabular-nums">{intensity}%</span>
             </div>
-            <div className="relative h-2 w-full rounded-[2px] overflow-hidden cursor-pointer bg-[#121212]/12">
-              <motion.div 
-                className="absolute left-0 top-0 h-full bg-[#181818] rounded-[2px]"
-                animate={{ width: `${intensity}%` }}
-              />
-              <input 
-                type="range" 
-                className="absolute inset-0 opacity-0 cursor-pointer w-full"
-                value={intensity}
-                onChange={(e) => setIntensity(parseInt(e.target.value))}
-              />
-            </div>
+            <Knob
+              value={intensity}
+              min={0}
+              max={100}
+              onChange={(v) => setIntensity(Math.round(v))}
+              size={28}
+              accentColor="#00D2FF"
+              variant="light"
+            />
           </div>
         </div>
       </div>
 
-      {/* Center: City (Detroit / Tbilisi / Berlin) */}
-      <div className="flex items-center bg-[#121212]/03 p-1 rounded-[6px] relative w-[320px] shadow-inner border border-[#121212]/05">
+      {/* Center: City (Detroit / Tbilisi / Berlin) — visually hidden; remove "hidden" to show again */}
+      <div className="hidden flex items-center bg-[#121212]/03 p-1 rounded-[6px] relative w-[320px] shadow-inner border border-[#121212]/05">
         {VARIANTS.map((v) => (
           <button
             key={v}

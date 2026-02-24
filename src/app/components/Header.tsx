@@ -26,7 +26,7 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Center: Generate Groove + Seed */}
+      {/* Center: groove-generator-header-block (add new button here) */}
       <GrooveGeneratorHeaderBlock />
 
       {/* Right: Stats (Less contrast) */}
