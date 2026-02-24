@@ -8,10 +8,12 @@ import { H3KRackPanel } from "./components/H3KRackPanel";
 import type { H3KRackParams } from "../audio/fx/h3kRack";
 import { GrooveGeneratorProvider, GrooveGeneratorBar } from "./components/GrooveGenerator";
 import { SequencerRow } from "./components/SequencerRow";
+import { ImportAudioPanel } from "./components/ImportAudioPanel";
 import { InstrumentControlsPanel } from "./components/InstrumentControlsPanel";
 import { FXCard } from "./components/FXCard";
 import { Fader } from "./components/Fader";
 import { Knob } from "./components/Knob";
+import { Toaster } from "./components/ui/sonner";
 import {
   Waves,
   Settings2,
@@ -30,6 +32,10 @@ import { useMeterLevels } from "./hooks/useMeterLevels";
 import type { TrackId, AppState } from "../core/types";
 import { STEPS_PER_BAR } from "../core/patternTypes";
 import * as audioEngine from "../core/audio/AudioEngine";
+import * as warpPlayer from "../core/audio/warpPlayer";
+import type { WarpFragment } from "../core/audio/warpPlayer";
+import { buildApplyGrooveOps } from "../core/audio/applyGrooveToSequencer";
+import type { GrooveTemplate } from "../core/audio/grooveExtract";
 import * as midi from "../core/midi";
 import type { MidiSyncMode } from "../core/midi";
 
@@ -224,6 +230,27 @@ export default function App() {
   const [midiSyncMode, setMidiSyncMode] = useState<MidiSyncMode>(() =>
     (typeof window !== "undefined" ? localStorage.getItem("percu_midi_sync") : null) as MidiSyncMode || "internal"
   );
+  const [warpFragment, setWarpFragment] = useState<WarpFragment | null>(null);
+  const [warpLoopEnabled, setWarpLoopEnabled] = useState(false);
+  const [warpGain, setWarpGain] = useState(1);
+  const [warpPitchSemitones, setWarpPitchSemitones] = useState(0);
+
+  const handleApplyGroove = useCallback(
+    (template: GrooveTemplate, strength: number) => {
+      const pattern = state.pattern;
+      if (!pattern) return;
+      const getMicro = (laneId: TrackId, stepIndex: number) =>
+        pattern.lanes[laneId]?.steps[stepIndex]?.microShiftMs ?? 0;
+      const getVel = (laneId: TrackId, stepIndex: number) =>
+        pattern.lanes[laneId]?.steps[stepIndex]?.velocity ?? 0.8;
+      const ops = buildApplyGrooveOps(template, strength, getMicro, getVel);
+      if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+        console.log("[Apply Groove] strength:", (strength * 100).toFixed(0) + "%", "ops:", ops.length);
+      }
+      actions.applyPatternPatch(ops);
+    },
+    [state.pattern, actions.applyPatternPatch]
+  );
 
   useEffect(() => {
     if (midiOutputId !== null) localStorage.setItem("percu_midi_output", midiOutputId);
@@ -253,6 +280,29 @@ export default function App() {
     if (ok && midiOutputId) midi.selectOutput(midiOutputId);
     if (ok && midiInputId) midi.selectInput(midiInputId);
   }, [midiReady, midiOutputId, midiInputId]);
+
+  const handleSyncToAudio = useCallback(
+    (audioBpm: number) => {
+      const bpm = Math.max(20, Math.min(300, audioBpm));
+      actions.setBpm(bpm);
+      if (warpLoopEnabled && !state.transport.isPlaying) {
+        audioEngine.userGestureInit();
+        initMidiOnce();
+        actions.togglePlay();
+      }
+    },
+    [actions.setBpm, actions.togglePlay, warpLoopEnabled, state.transport.isPlaying, initMidiOnce]
+  );
+
+  const handleSyncToSequencer = useCallback(() => {
+    setWarpLoopEnabled(true);
+    warpPlayer.setTargetBpm(state.transport.bpm);
+    if (!state.transport.isPlaying) {
+      audioEngine.userGestureInit();
+      initMidiOnce();
+      actions.togglePlay();
+    }
+  }, [state.transport.bpm, state.transport.isPlaying, actions.togglePlay, initMidiOnce]);
 
   useEffect(() => {
     if (midiSyncMode !== "receive") return;
@@ -290,12 +340,35 @@ export default function App() {
         midi.setTransportBpm(state.transport.bpm);
         midi.sendTransportStart();
       }
+      if (warpLoopEnabled && warpFragment) {
+        const ctx = audioEngine.getAudioContext();
+        if (ctx) {
+          warpPlayer.setContext(ctx);
+          warpPlayer.setFragment(warpFragment);
+          warpPlayer.setTargetBpm(state.transport.bpm);
+          warpPlayer.setGain(warpGain);
+          warpPlayer.setPitchSemitones(warpPitchSemitones);
+          warpPlayer.start(ctx.currentTime);
+        }
+      }
     } else {
       if (midiSyncMode === "send") midi.sendTransportStop();
       audioEngine.stop();
+      warpPlayer.stop();
       setCurrentStepIndex(-1);
     }
-  }, [state.transport.isPlaying, midiReady, midiSyncMode]);
+  }, [state.transport.isPlaying, midiReady, midiSyncMode, warpLoopEnabled, warpFragment, warpGain, warpPitchSemitones]);
+
+  /** Ableton-style: when a warp fragment is selected, enable warping to transport; when cleared, stop. */
+  useEffect(() => {
+    if (warpFragment) setWarpLoopEnabled(true);
+    else warpPlayer.stop();
+  }, [warpFragment]);
+
+  useEffect(() => {
+    warpPlayer.setGain(warpGain);
+    warpPlayer.setPitchSemitones(warpPitchSemitones);
+  }, [warpGain, warpPitchSemitones]);
 
   useEffect(() => {
     if (!state.transport.isPlaying || state.transport.bpm <= 0) return;
@@ -313,6 +386,9 @@ export default function App() {
   useEffect(() => {
     audioEngine.setBpm(state.transport.bpm);
     if (midiSyncMode === "send") midi.setTransportBpm(state.transport.bpm);
+    if (warpPlayer.isPlaying()) {
+      warpPlayer.setTargetBpm(state.transport.bpm);
+    }
   }, [state.transport.bpm, midiSyncMode]);
 
   useEffect(() => {
@@ -396,6 +472,7 @@ export default function App() {
       className="min-h-screen bg-[#F2F2EB] flex flex-col overflow-x-hidden selection:bg-[#E66000]/20"
       style={{ paddingBottom: "calc(var(--footer-h, 64px) + 16px)" }}
     >
+      <Toaster />
       <GrooveGeneratorProvider>
         <Header />
         <GrooveGeneratorBar />
@@ -488,6 +565,21 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          <ImportAudioPanel
+            onWarpFragmentReady={setWarpFragment}
+            warpLoopEnabled={warpLoopEnabled}
+            onWarpLoopEnable={setWarpLoopEnabled}
+            onApplyGroove={handleApplyGroove}
+            onSyncToAudio={handleSyncToAudio}
+            onSyncToSequencer={handleSyncToSequencer}
+            isTransportPlaying={state.transport.isPlaying}
+            sequencerBpm={state.transport.bpm}
+            warpGain={warpGain}
+            warpPitchSemitones={warpPitchSemitones}
+            onWarpGainChange={setWarpGain}
+            onWarpPitchChange={setWarpPitchSemitones}
+          />
 
           <div className="flex flex-col">
             {SEQUENCER_TRACKS.map((track) => {

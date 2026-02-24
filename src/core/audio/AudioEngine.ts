@@ -287,6 +287,12 @@ export function userGestureInit(): void {
   }
 }
 
+/** Returns the shared AudioContext after userGestureInit (for decode/import). */
+export function getAudioContext(): AudioContext | null {
+  userGestureInit();
+  return ctx;
+}
+
 export function start(getState: GetState, onStepTrigger?: OnStepTriggerFn): void {
   userGestureInit();
   if (!ctx) return;
