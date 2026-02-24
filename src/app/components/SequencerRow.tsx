@@ -9,8 +9,26 @@ import { cn } from "../../lib/utils";
 import type { TrackId } from "../../core/types";
 import { quantizeToScale } from "../../core/scale";
 
-const STEP_GRID_CLASS = "grid gap-1.5 flex-1 min-w-[500px]";
-const STEP_GRID_STYLE: React.CSSProperties = { gridTemplateColumns: "repeat(16, minmax(0, 1fr))" };
+/** Step/velocity/mod column width (px) — exact width for alignment */
+const STEP_CELL_W = 24;
+/** Gap between columns (px); same as gap-1.5 */
+const STEP_GAP = 6;
+/** Total width of 16 columns + 15 gaps so step row and velocity/mod row match exactly */
+const STEP_GRID_TOTAL_W = STEP_CELL_W * 16 + STEP_GAP * 15;
+
+/** Single source of truth for left offset so step grid and velocity/mod bar strip align horizontally */
+const ROW_GAP = 12; /* gap-3 (px) */
+const LABEL_SECTION_W = 172;
+/** Main row: gap + nudge content + mr-2 = 12 + 60 + 8 = 80. Expanded row has spacer2 + gap before bar strip, so spacer2 = 80 - ROW_GAP = 68. */
+const NUDGE_SECTION_W = 80;
+const NUDGE_CONTENT_W = NUDGE_SECTION_W - ROW_GAP - 8; /* 60px */
+const EXPANDED_SECOND_SPACER_W = NUDGE_SECTION_W - ROW_GAP; /* 68px so spacer + gap = 80, matching main row */
+
+const STEP_GRID_CLASS = "grid gap-1.5";
+const STEP_GRID_STYLE: React.CSSProperties = {
+  gridTemplateColumns: `repeat(16, ${STEP_CELL_W}px)`,
+  columnGap: `${STEP_GAP}px`,
+};
 
 const DEFAULT_STEPS = new Array(16).fill(false);
 const DEFAULT_VELS = new Array(16).fill(100);
@@ -334,12 +352,12 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
       )}
       {/* Main Row Bar — single-click to select, double-click to expand/collapse */}
       <div 
-        className="flex items-center gap-6 h-[72px] px-8 flex-none cursor-pointer" 
+        className="flex items-center gap-3 h-[72px] px-6 flex-none cursor-pointer" 
         onClick={handleBarClick} 
         onDoubleClick={handleBarDoubleClick}
       >
-        {/* Toggle & Label Section */}
-        <div className="flex items-center gap-4 w-[240px] flex-none">
+        {/* Toggle & Label Section — width from shared constant so expanded row aligns */}
+        <div className="flex items-center gap-3 flex-none" style={{ width: LABEL_SECTION_W }}>
           <button 
             onClick={(e) => { e.stopPropagation(); onMuteToggle?.(); }}
             onDoubleClick={(e) => e.stopPropagation()}
@@ -384,14 +402,15 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
           </div>
         </div>
 
-        {/* Nudge controls (Softer) */}
-        <div className="flex items-center gap-1 flex-none mr-4">
+        {/* Nudge controls — fixed width so expanded spacer matches and step grid aligns with velocity/mod */}
+        <div className="flex items-center gap-1 flex-none mr-2" style={{ width: NUDGE_CONTENT_W }}>
           <button type="button" className="p-1.5 text-[#121212]/15 hover:text-[#E66000] transition-colors"><ChevronLeft size={16} /></button>
           <button type="button" className="p-1.5 text-[#121212]/15 hover:text-[#E66000] transition-colors"><ChevronRight size={16} /></button>
         </div>
 
-        {/* 16-Step Grid — same grid as expanded bar strip so columns align with velocity/pitch/step numbers */}
-        <div className={STEP_GRID_CLASS} style={STEP_GRID_STYLE}>
+        {/* 16-Step Grid — fixed 24px columns so triggers and velocity/mod bars align exactly */}
+        <div className="flex-none" style={{ width: STEP_GRID_TOTAL_W }}>
+          <div className={STEP_GRID_CLASS} style={STEP_GRID_STYLE}>
           {activeSteps.map((active, i) => {
             const editingModValueStepIndex = velocityBarDraggingIndex ?? pitchBarDraggingIndex ?? modBarDragging?.index ?? -1;
             return (
@@ -412,6 +431,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
               />
             );
           })}
+          </div>
         </div>
       </div>
 
@@ -422,15 +442,15 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="flex-1 border-t border-[#121212]/08 px-8 py-3 overflow-hidden"
+            className="flex-1 border-t border-[#121212]/08 px-6 py-3 overflow-hidden"
           >
-            <div className="flex gap-6 items-stretch min-h-0">
-              {/* Spacer: match main row left (label + nudge) so bar strip aligns with step grid */}
-              <div className="w-[240px] flex-none flex-shrink-0" aria-hidden />
-              <div className="w-[76px] flex-none flex-shrink-0" aria-hidden />
+            <div className="flex gap-3 items-stretch min-h-0">
+              {/* Spacers: same widths as main row (label + nudge section) so bar strip aligns with step grid */}
+              <div className="flex-none flex-shrink-0" style={{ width: LABEL_SECTION_W }} aria-hidden />
+              <div className="flex-none flex-shrink-0" style={{ width: EXPANDED_SECOND_SPACER_W }} aria-hidden />
 
-              {/* Bar strip: same 16-column grid as main row so velocity/pitch/mod/step numbers align with seq steps */}
-              <div className="flex-1 min-w-[500px] flex flex-col gap-3 min-h-0 min-w-0">
+              {/* Bar strip: same fixed width and 24px columns as step row so velocity/pitch/mod align exactly */}
+              <div className="flex-none flex flex-col gap-3 min-h-0" style={{ width: STEP_GRID_TOTAL_W }}>
                 <div className="flex items-center justify-between flex-none flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-[#121212]/50">
                     {onLaneSwingChange != null && laneSwingPct != null && (
@@ -545,12 +565,12 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                   </div>
                 </div>
 
-                <div className={cn("flex-1 min-w-0 min-h-0 grid gap-x-1.5 gap-y-3")} style={STEP_GRID_STYLE}>
+                <div className="flex-1 min-w-0 min-h-0 grid gap-y-3" style={{ ...STEP_GRID_STYLE, rowGap: 12 }}>
                   {/* Row 1: Velocity mod value line (0–127), aligned with seq steps */}
                   {[...Array(16)].map((_, i) => {
                     const vel127 = Math.max(0, Math.min(127, velocities[i] ?? 100));
                     return (
-                      <div key={`vel-${i}`} className="relative h-[64px] min-w-0 w-full">
+                      <div key={`vel-${i}`} className="relative h-[64px] w-full min-w-[24px]">
                         <ToolValue
                           show={dragTooltip != null && velocityBarDraggingIndex === i}
                           label={dragTooltip?.label ?? ""}
@@ -573,7 +593,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                     const noteName = semitoneToNote(p);
                     const fillColor = getNoteColor(p);
                     return (
-                      <div key={`pitch-${i}`} className="relative h-[64px] min-w-0 w-full flex flex-col">
+                      <div key={`pitch-${i}`} className="relative h-[64px] w-full min-w-[24px] flex flex-col">
                         <ToolValue
                           show={dragTooltip != null && pitchBarDraggingIndex === i}
                           label={dragTooltip?.label ?? ""}
@@ -614,7 +634,7 @@ export const SequencerRow: React.FC<SequencerRowProps> = ({
                         const val = modLaneValues[expandedModLane]?.[i] ?? 0.5;
                         const val127 = Math.round(val * 127);
                         return (
-                          <div key={`mod-${i}`} className="relative h-[64px] min-w-0 w-full">
+                          <div key={`mod-${i}`} className="relative h-[64px] w-full min-w-[24px]">
                             <ToolValue
                               show={dragTooltip != null && modBarDragging?.lane === expandedModLane && modBarDragging?.index === i}
                               label={dragTooltip?.label ?? ""}
